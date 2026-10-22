@@ -1,13 +1,20 @@
 // Simpan di: src/components/PresensiButton.tsx
-// Dipakai di slot presensi pada src/app/sesi/[id].tsx (SRS-02 FR-2.5):
-//   <PresensiButton sesi={sesi} />
 import React, { useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Sesuaikan path import dengan struktur SRS-01 jika berbeda.
-import { useApp, type Sesi } from '@/context/AppContext';
+import { useApp } from '@/data/store';
 import { jamDetik, jamMenit, tanggalPendek } from '@/lib/format';
+
+// Definisikan tipe Sesi secara lokal agar tidak error meskipun store.tsx tidak mengekspornya
+export type Sesi = {
+  id: string;
+  status: 'belum_dibuka' | 'dibuka' | 'ditutup';
+  namaPraktikum?: string;
+  modul?: string;
+  kelas?: string;
+  tanggal?: string;
+};
 
 type Step = 'konfirmasi' | 'sukses' | 'duplikat' | null;
 
@@ -20,8 +27,10 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
   const [waktuTercatat, setWaktuTercatat] = useState('');
   const sedangKirim = useRef(false);
 
-  const sudahPresensi = (presensi[sesi.id] ?? []).some((p) => p.praktikanId === identitas.id);
-  const entriSaya = (presensi[sesi.id] ?? []).find((p) => p.praktikanId === identitas.id);
+  const infoModul = sesi.namaPraktikum ?? sesi.modul ?? 'Praktikum';
+
+  const sudahPresensi = (presensi[sesi.id] ?? []).some((p) => p.praktikanId === identitas?.id);
+  const entriSaya = (presensi[sesi.id] ?? []).find((p) => p.praktikanId === identitas?.id);
   const dibuka = sesi.status === 'dibuka';
 
   // FR-4.1 & FR-4.5
@@ -55,9 +64,9 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
 
     const waktu = jamDetik(new Date()); // FR-4.3
     const hasil = tambahPresensi(sesi.id, {
-      praktikanId: identitas.id,
-      nama: identitas.nama,
-      kelas: identitas.kelas,
+      praktikanId: identitas?.id ?? '',
+      nama: identitas?.nama ?? '',
+      kelas: (identitas?.kelas ?? 'A') as any, // Cast untuk mengatasi error tipe kelas "" vs union
       waktu,
     });
 
@@ -106,9 +115,9 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
               <>
                 <Text style={styles.judul}>Konfirmasi Presensi</Text>
                 <Text style={styles.nama}>
-                  {identitas.nama} • Kelas {identitas.kelas}
+                  {identitas?.nama} - Kelas {identitas?.kelas}
                 </Text>
-                <Text style={styles.baris}>{sesi.modul}</Text>
+                <Text style={styles.baris}>{infoModul}</Text>
                 <Text style={styles.baris}>
                   Waktu: {tanggalPendek(waktuSekarang)}, {jamMenit(waktuSekarang)}
                 </Text>
@@ -130,7 +139,7 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
                 <Text style={[styles.judul, { textAlign: 'center' }]}>
                   Presensi tercatat {waktuTercatat}
                 </Text>
-                <Text style={[styles.baris, { textAlign: 'center' }]}>{sesi.modul}</Text>
+                <Text style={[styles.baris, { textAlign: 'center' }]}>{infoModul}</Text>
                 <Pressable style={[styles.aksiBtn, styles.kirim, { marginTop: 16 }]} onPress={() => setStep(null)}>
                   <Text style={styles.kirimText}>Tutup</Text>
                 </Pressable>
@@ -173,7 +182,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     width: '100%',
-    maxWidth: 560, // tetap proporsional di tablet / web
+    maxWidth: 560,
     alignSelf: 'center',
   },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB', marginBottom: 16 },

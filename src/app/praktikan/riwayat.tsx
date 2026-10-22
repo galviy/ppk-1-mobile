@@ -1,87 +1,158 @@
 // Simpan di: src/app/praktikan/riwayat.tsx
 import React, { useMemo } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Sesuaikan path import dengan struktur SRS-01 jika berbeda.
-import { EmptyState, useApp } from '@/context/AppContext';
-import { tanggalDariIso } from '@/lib/format';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { RoleHeader } from '@/components/ui/role-header';
+import { Spacing } from '@/constants/theme';
+import { useApp } from '@/data/store';
 
 type Baris = {
   sesiId: string;
-  modul: string;
+  namaPraktikum: string;
   kelas: string;
   tanggal: string;
-  waktu: string;
+  waktuHadir: string;
 };
 
-export default function RiwayatScreen() {
-  const { identitas, sesi, presensi } = useApp();
+export default function PraktikanRiwayatScreen() {
+  const { identitas, presensi, daftarSesi } = useApp();
 
-  // FR-4.6: hanya sesi yang pernah dihadiri praktikan aktif
-  const data = useMemo<Baris[]>(() => {
+  // FR-4.6: hanya sesi yang pernah dihadiri praktikan aktif, diurutkan terbaru di atas
+  const riwayatList = useMemo<Baris[]>(() => {
     const hasil: Baris[] = [];
-    for (const s of sesi) {
-      const entri = (presensi[s.id] ?? []).find((p) => p.praktikanId === identitas.id);
-      if (entri) {
-        hasil.push({ sesiId: s.id, modul: s.modul, kelas: s.kelas, tanggal: s.tanggal, waktu: entri.waktu });
+    for (const s of daftarSesi) {
+      const myEntry = (presensi[s.id] ?? []).find((p) => p.praktikanId === identitas?.id);
+      if (myEntry) {
+        hasil.push({
+          sesiId: s.id,
+          namaPraktikum: s.namaPraktikum,
+          kelas: s.kelas,
+          tanggal: s.tanggal,
+          waktuHadir: myEntry.waktu,
+        });
       }
     }
-    // terbaru di atas
-    return hasil.sort((a, b) => (a.tanggal === b.tanggal ? b.waktu.localeCompare(a.waktu) : b.tanggal.localeCompare(a.tanggal)));
-  }, [sesi, presensi, identitas.id]);
+    // Urutkan terbaru di atas
+    return hasil.sort((a, b) => 
+      a.tanggal === b.tanggal ? b.waktuHadir.localeCompare(a.waktuHadir) : b.tanggal.localeCompare(a.tanggal)
+    );
+  }, [daftarSesi, presensi, identitas?.id]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <FlatList
-        data={data}
-        keyExtractor={(item) => item.sesiId}
-        contentContainerStyle={[styles.list, data.length === 0 && styles.listKosong]}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.judul}>Riwayat Kehadiran</Text>
-            <Text style={styles.sub}>
-              {identitas.nama} • Kelas {identitas.kelas} • {data.length} sesi dihadiri
-            </Text>
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <RoleHeader />
+
+        <View style={styles.content}>
+          <View style={styles.titleSection}>
+            <ThemedText type="subtitle" style={styles.pageTitle}>
+              Riwayat Presensi
+            </ThemedText>
+            <ThemedText themeColor="textSecondary" style={styles.pageSubtitle}>
+              Catatan kehadiran praktikum Anda ({riwayatList.length} sesi dihadiri)
+            </ThemedText>
           </View>
-        }
-        ListEmptyComponent={
-          // FR-4.7
-          <EmptyState title="Belum ada catatan kehadiran" message="Presensi yang kamu lakukan akan muncul di sini." />
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardAtas}>
-              <Text style={styles.modul} numberOfLines={2}>
-                {item.modul}
-              </Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>Hadir</Text>
-              </View>
-            </View>
-            <Text style={styles.meta}>
-              Kelas {item.kelas} • {tanggalDariIso(item.tanggal)}
-            </Text>
-            <Text style={styles.waktu}>Waktu kehadiran: {item.waktu}</Text>
-          </View>
-        )}
-      />
-    </SafeAreaView>
+
+          {riwayatList.length === 0 ? (
+            <EmptyState
+              title="Belum Ada Catatan Kehadiran"
+              message="Presensi yang kamu lakukan akan muncul di sini."
+            />
+          ) : (
+            <FlatList
+              data={riwayatList}
+              keyExtractor={(item) => item.sesiId}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => (
+                <Card style={styles.riwayatCard}>
+                  <View style={styles.cardAtas}>
+                    <ThemedText type="smallBold" style={styles.sessionTitle} numberOfLines={2}>
+                      {item.namaPraktikum}
+                    </ThemedText>
+                    <View style={styles.badgeSuccess}>
+                      <ThemedText style={styles.badgeText}>Hadir</ThemedText>
+                    </View>
+                  </View>
+                  <ThemedText themeColor="textSecondary" style={styles.sessionInfo}>
+                    Kelas {item.kelas} • {item.tanggal}
+                  </ThemedText>
+                  <ThemedText style={styles.waktu}>
+                    Waktu kehadiran: {item.waktuHadir}
+                  </ThemedText>
+                </Card>
+              )}
+            />
+          )}
+        </View>
+      </SafeAreaView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F9FAFB' },
-  list: { padding: 16, width: '100%', maxWidth: 640, alignSelf: 'center', gap: 12 },
-  listKosong: { flexGrow: 1, justifyContent: 'center' },
-  header: { marginBottom: 8 },
-  judul: { fontSize: 22, fontWeight: '700', color: '#111827' },
-  sub: { marginTop: 2, fontSize: 13, color: '#6B7280' },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' },
-  cardAtas: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  modul: { flex: 1, fontSize: 16, fontWeight: '600', color: '#111827' },
-  badge: { backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  badgeText: { color: '#166534', fontSize: 12, fontWeight: '600' },
-  meta: { marginTop: 6, fontSize: 13, color: '#6B7280' },
-  waktu: { marginTop: 2, fontSize: 14, color: '#374151', fontWeight: '500' },
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: Spacing.four,
+  },
+  titleSection: {
+    paddingVertical: Spacing.three,
+  },
+  pageTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '700',
+  },
+  pageSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  listContent: {
+    paddingBottom: Spacing.four,
+  },
+  riwayatCard: {
+    marginVertical: 6,
+    padding: 16,
+    gap: 6,
+  },
+  cardAtas: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  sessionTitle: {
+    flex: 1,
+    fontSize: 16,
+  },
+  sessionInfo: {
+    fontSize: 13,
+  },
+  badgeSuccess: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+  },
+  badgeText: {
+    color: '#15803D',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  waktu: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: '500',
+  },
 });
