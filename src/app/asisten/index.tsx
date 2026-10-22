@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -69,7 +70,11 @@ export default function AsistenSesiScreen() {
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.listContent}
               renderItem={({ item }) => (
-                <Card style={styles.sessionCard}>
+                <Card
+                  style={styles.sessionCard}
+                  onPress={() =>
+                    router.push({ pathname: '/sesi/[id]', params: { id: item.id } })
+                  }>
                   <View style={styles.cardTopRow}>
                     <View style={styles.titleWrapper}>
                       <ThemedText type="smallBold" style={styles.sessionTitle}>

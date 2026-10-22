@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useApp } from "@/data/store";
-import { Card } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { PrimaryButton } from "@/components/ui/primary-button";
 import { formatJam, formatTanggal } from "@/components/sesi/SesiCard";
 
 function Baris({ label, children }: { label: string; children: React.ReactNode }) {

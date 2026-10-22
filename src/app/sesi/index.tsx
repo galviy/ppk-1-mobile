@@ -2,19 +2,20 @@ import { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Stack, router } from "expo-router";
 import { useApp } from "@/data/store";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SesiCard } from "@/components/sesi/SesiCard";
 
 type FilterKelas = "Semua" | "A" | "B";
 const FILTERS: FilterKelas[] = ["Semua", "A", "B"];
 
 export default function DaftarJadwal() {
-  const { role, identitas, daftarSesi } = useApp();
+  const { role, identitas, daftarSesi, daftarPraktikan } = useApp();
   const [filter, setFilter] = useState<FilterKelas>("Semua");
 
   // NOTE: kontrak SRS-01 `identitas` cuma {id, nama}. Kelas praktikan dibaca dari
   // identitas.kelas kalau P1 menambahkannya (lihat catatan koordinasi).
-  const kelasPraktikan = (identitas as { kelas?: "A" | "B" } | null)?.kelas;
+  const kelasPraktikan =
+  identitas?.kelas ?? daftarPraktikan.find((p) => p.id === identitas?.id)?.kelas;
 
   const data = useMemo(() => {
     let list = [...daftarSesi];
