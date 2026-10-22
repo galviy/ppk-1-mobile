@@ -1,1 +1,36 @@
+<<<<<<< HEAD
 node_modules
+=======
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native builds
+ios/
+android/
+
+# Metro
+.metro-health-check*
+
+# Debug
+*.log
+npm-debug.*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+>>>>>>> main
