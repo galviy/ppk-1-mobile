@@ -3,18 +3,38 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/data/store';
 import { useTheme } from '@/hooks/use-theme';
 
 export function RoleHeader() {
-  const { role, identitas, gantiPeran } = useApp();
+  const { user, logout } = useAuth();
+  const { role, identitas, keluarAkun } = useApp();
   const theme = useTheme();
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
 
-  const roleLabel =
-    role === 'praktikan'
-      ? `Praktikan${identitas?.kelas ? ` — Kelas ${identitas.kelas}` : ''}`
-      : 'Asisten Laboratorium';
+  const namaTampil = user?.nama || identitas?.nama || 'Pengguna';
+  const roleAktif = user?.role || role || 'praktikan';
+  const kelasAktif = user?.kelas || identitas?.kelas;
+  const nimAktif = user?.nim;
+
+  let roleLabel = '';
+  if (roleAktif === 'praktikan') {
+    roleLabel = `Praktikan${kelasAktif ? ` • Kelas ${kelasAktif}` : ''}${
+      nimAktif ? ` (${nimAktif})` : ''
+    }`;
+  } else {
+    roleLabel = 'Asisten Laboratorium';
+  }
+
+  const handleLogout = async () => {
+    setShowConfirmModal(false);
+    if (keluarAkun) {
+      await keluarAkun();
+    } else {
+      await logout();
+    }
+  };
 
   return (
     <>
@@ -27,34 +47,37 @@ export function RoleHeader() {
           },
         ]}>
         <View style={styles.infoContainer}>
-          <ThemedText type="smallBold" style={styles.userName}>
-            {identitas?.nama ?? 'Pengguna Dummy'}
-          </ThemedText>
+          <View style={styles.nameRow}>
+            <Text style={styles.userIcon}>
+              {roleAktif === 'praktikan' ? '🎓' : '👨‍🏫'}
+            </Text>
+            <ThemedText type="smallBold" style={styles.userName} numberOfLines={1}>
+              {namaTampil}
+            </ThemedText>
+          </View>
           <Text style={styles.roleTag}>{roleLabel}</Text>
         </View>
 
+        {/* Tombol Logout (FR-01.3) */}
         <Pressable
           onPress={() => setShowConfirmModal(true)}
           style={({ pressed }) => [
-            styles.switchBtn,
-            pressed && styles.switchBtnPressed,
+            styles.logoutBtn,
+            pressed && styles.logoutBtnPressed,
           ]}>
-          <Text style={styles.switchBtnText}>Ganti Peran</Text>
+          <Text style={styles.logoutBtnText}>Keluar 🚪</Text>
         </Pressable>
       </View>
 
       <ConfirmModal
         visible={showConfirmModal}
-        title="Ganti Peran Pengguna"
-        message="Apakah Anda yakin ingin kembali ke menu utama dan mengganti peran atau identitas akun?"
-        confirmLabel="Ya, Ganti Peran"
+        title="Keluar dari Akun"
+        message="Apakah Anda yakin ingin keluar dari sesi akun ini dan kembali ke halaman login?"
+        confirmLabel="Ya, Keluar"
         cancelLabel="Batal"
         variant="danger"
         onCancel={() => setShowConfirmModal(false)}
-        onConfirm={() => {
-          setShowConfirmModal(false);
-          gantiPeran();
-        }}
+        onConfirm={handleLogout}
       />
     </>
   );
@@ -73,8 +96,17 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  userIcon: {
+    fontSize: 16,
+  },
   userName: {
     fontSize: 15,
+    flexShrink: 1,
   },
   roleTag: {
     fontSize: 12,
@@ -82,20 +114,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
-  switchBtn: {
+  logoutBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#FECACA',
   },
-  switchBtnPressed: {
+  logoutBtnPressed: {
     opacity: 0.7,
   },
-  switchBtnText: {
+  logoutBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1D4ED8',
+    color: '#DC2626',
   },
 });
