@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "465565235976",
+    "project_id": "ppk-kel2-2026",
+    "storage_bucket": "ppk-kel2-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465565235976:android:631b6340bd5929d3fc4abd",
+        "android_client_info": {
+          "package_name": "com.kel2.ppk1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUhkxRSwT0ief47PMyEQHrBNQ9NFMx_IM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465565235976:android:bd0f19347df8b170fc4abd",
+        "android_client_info": {
+          "package_name": "com.ppkkelompok2.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUhkxRSwT0ief47PMyEQHrBNQ9NFMx_IM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

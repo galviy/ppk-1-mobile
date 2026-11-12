@@ -1,5 +1,11 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,13 +14,31 @@ import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/data/store';
 import { Role } from '@/data/types';
 
-export default function PilihPeranScreen() {
+export default function IndexScreen() {
+  const { user, isLoading } = useAuth();
   const { setRole } = useApp();
 
-  const handlePilihPeran = (selectedRole: Role) => {
+  // Mempertahankan sesi login dan mengarahkan otomatis sesuai role (FR-01.8 & FR-01.9)
+  useEffect(() => {
+    if (!isLoading) {
+      if (user) {
+        if (user.role === 'praktikan') {
+          router.replace('/praktikan');
+        } else {
+          router.replace('/asisten');
+        }
+      } else {
+        router.replace('/(auth)/login');
+      }
+    }
+  }, [user, isLoading]);
+
+  // Mode Uji Coba Dummy (Opsional untuk testing offline Sprint 1)
+  const handlePilihPeranDummy = (selectedRole: Role) => {
     setRole(selectedRole);
     router.push({
       pathname: '/pilih-identitas',
@@ -22,71 +46,77 @@ export default function PilihPeranScreen() {
     });
   };
 
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <ThemedText style={styles.loadingText}>Memuat sesi autentikasi...</ThemedText>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <View style={styles.badgeTop}>
             <ThemedText type="smallBold" style={styles.badgeTopText}>
-              Aplikasi Praktikum PPK
+              Aplikasi Praktikum PPK • Sprint 2
             </ThemedText>
           </View>
           <ThemedText type="subtitle" style={styles.title}>
-            Pilih Peran Pengguna
+            Selamat Datang
           </ThemedText>
           <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-            Silakan pilih peran Anda untuk melanjutkan ke alur praktikum
+            Sistem Autentikasi dan Manajemen Pengguna Praktikum
           </ThemedText>
         </View>
 
         <View style={styles.cardContainer}>
-          <Card style={styles.roleCard} onPress={() => handlePilihPeran('praktikan')}>
+          <Card style={styles.mainCard}>
             <View style={styles.cardHeader}>
-              <View style={[styles.iconCircle, styles.praktikanCircle]}>
-                <ThemedText style={styles.iconEmoji}>🎓</ThemedText>
+              <View style={styles.iconCircle}>
+                <ThemedText style={styles.iconEmoji}>🔐</ThemedText>
               </View>
               <View style={styles.cardTextWrapper}>
                 <ThemedText type="smallBold" style={styles.roleTitle}>
-                  Saya Praktikan
+                  Autentikasi Firebase (SRS-01)
                 </ThemedText>
                 <ThemedText themeColor="textSecondary" style={styles.roleDesc}>
-                  Lihat jadwal kelas Anda, pantau status sesi, dan lakukan presensi kehadiran.
+                  Masuk dengan akun terdaftar atau buat akun baru dengan peran Praktikan / Asisten.
                 </ThemedText>
               </View>
             </View>
             <PrimaryButton
-              label="Masuk sebagai Praktikan →"
-              onPress={() => handlePilihPeran('praktikan')}
+              label="Buka Halaman Login →"
+              onPress={() => router.replace('/(auth)/login')}
               style={styles.cardButton}
             />
           </Card>
 
-          <Card style={styles.roleCard} onPress={() => handlePilihPeran('asisten')}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconCircle, styles.asistenCircle]}>
-                <ThemedText style={styles.iconEmoji}>👨‍🏫</ThemedText>
-              </View>
-              <View style={styles.cardTextWrapper}>
-                <ThemedText type="smallBold" style={styles.roleTitle}>
-                  Saya Asisten
-                </ThemedText>
-                <ThemedText themeColor="textSecondary" style={styles.roleDesc}>
-                  Kelola dan pantau seluruh sesi kelas, buka/tutup sesi, serta rekap kehadiran.
-                </ThemedText>
-              </View>
+          {/* Opsi Mode Demo Cepat */}
+          <View style={styles.devBox}>
+            <ThemedText type="smallBold" style={styles.devTitle}>
+              🛠️ Mode Pengujian Cepat
+            </ThemedText>
+            <View style={styles.devRow}>
+              <Pressable
+                onPress={() => handlePilihPeranDummy('praktikan')}
+                style={styles.devChip}>
+                <Text style={styles.devChipText}>Demo Praktikan</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => handlePilihPeranDummy('asisten')}
+                style={styles.devChip}>
+                <Text style={styles.devChipText}>Demo Asisten</Text>
+              </Pressable>
             </View>
-            <PrimaryButton
-              label="Masuk sebagai Asisten →"
-              onPress={() => handlePilihPeran('asisten')}
-              variant="outline"
-              style={styles.cardButton}
-            />
-          </Card>
+          </View>
         </View>
 
         <View style={styles.footer}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.footerText}>
-            Sprint 1 • Modul Fondasi Aplikasi (SRS-01)
+            SRS-01 • Autentikasi dan Manajemen Pengguna
           </ThemedText>
         </View>
       </SafeAreaView>
@@ -97,6 +127,16 @@ export default function PilihPeranScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#64748B',
   },
   safeArea: {
     flex: 1,
@@ -137,7 +177,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     marginVertical: Spacing.four,
   },
-  roleCard: {
+  mainCard: {
     padding: 20,
   },
   cardHeader: {
@@ -152,12 +192,7 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  praktikanCircle: {
     backgroundColor: '#DBEAFE',
-  },
-  asistenCircle: {
-    backgroundColor: '#FEF3C7',
   },
   iconEmoji: {
     fontSize: 26,
@@ -175,6 +210,36 @@ const styles = StyleSheet.create({
   },
   cardButton: {
     marginTop: 4,
+  },
+  devBox: {
+    padding: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 8,
+  },
+  devTitle: {
+    fontSize: 13,
+    color: '#475569',
+  },
+  devRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  devChip: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+  },
+  devChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
   },
   footer: {
     alignItems: 'center',

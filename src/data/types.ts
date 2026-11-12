@@ -1,9 +1,31 @@
-export type Role = "praktikan" | "asisten";
+export type Role = 'praktikan' | 'asisten';
+
+export type UserProfile = {
+  uid: string;
+  email: string;
+  nama: string;
+  role: Role;
+  nim?: string;
+  kelas?: 'A' | 'B';
+  nip?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type RegisterPayload = {
+  email: string;
+  password: string;
+  nama: string;
+  role: Role;
+  nim?: string;
+  kelas?: 'A' | 'B';
+  nip?: string;
+};
 
 export type Praktikan = {
   id: string;
   nama: string;
-  kelas: "A" | "B";
+  kelas: 'A' | 'B';
 };
 
 export type Asisten = {
@@ -13,23 +35,25 @@ export type Asisten = {
 
 export type Sesi = {
   id: string;
-  namaPraktikum: string;   // contoh: "Modul 1 — Siklus Hidup"
-  kelas: "A" | "B";
-  tanggal: string;         // "2026-10-22"
-  jamMulai: string;        // "13:00"
-  jamSelesai: string;      // "15:00"
-  status: "belum_dibuka" | "dibuka" | "ditutup";
+  namaPraktikum: string; // contoh: "Modul 1 — Siklus Hidup"
+  kelas: 'A' | 'B';
+  tanggal: string; // "2026-10-22"
+  jamMulai: string; // "13:00"
+  jamSelesai: string; // "15:00"
+  status: 'belum_dibuka' | 'dibuka' | 'ditutup';
 };
 
 export type PresensiEntry = {
   praktikanId: string;
   nama: string;
-  kelas: "A" | "B";
-  waktu: string;           // "HH:MM:SS"
+  kelas: 'A' | 'B';
+  waktu: string; // "HH:MM:SS"
 };
 
 export type UserIdentitas = {
   id: string;
   nama: string;
-  kelas?: "A" | "B";
+  kelas?: 'A' | 'B';
+  email?: string;
+  role?: Role;
 };

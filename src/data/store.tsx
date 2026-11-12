@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { router } from 'expo-router';
 
+import { useAuth } from '@/context/AuthContext';
 import {
   DUMMY_ASISTEN,
   DUMMY_PRAKTIKAN,
@@ -29,15 +30,39 @@ export interface AppContextType {
   daftarPraktikan: Praktikan[];
   daftarAsisten: Asisten[];
   gantiPeran: () => void;
+  keluarAkun: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<Role | null>(null);
-  const [identitas, setIdentitas] = useState<UserIdentitas | null>(null);
+  const { user, logout } = useAuth();
+  const [overrideRole, setOverrideRole] = useState<Role | null>(null);
+  const [overrideIdentitas, setOverrideIdentitas] = useState<UserIdentitas | null>(null);
   const [daftarSesi, setDaftarSesi] = useState<Sesi[]>(DUMMY_SESI);
   const [presensi, setPresensi] = useState<Record<string, PresensiEntry[]>>(INITIAL_PRESENSI);
+
+  // Derived state dari profil pengguna Firebase (FR-01.5, FR-01.6, FR-01.7)
+  const role: Role | null = overrideRole ?? user?.role ?? null;
+  const identitas: UserIdentitas | null =
+    overrideIdentitas ??
+    (user
+      ? {
+          id: user.uid,
+          nama: user.nama,
+          kelas: user.kelas,
+          email: user.email,
+          role: user.role,
+        }
+      : null);
+
+  const setRole = (newRole: Role | null) => {
+    setOverrideRole(newRole);
+  };
+
+  const setIdentitas = (newIdentitas: UserIdentitas | null) => {
+    setOverrideIdentitas(newIdentitas);
+  };
 
   const setSesiStatus = (sesiId: string, status: Sesi['status']) => {
     setDaftarSesi((prev) =>
@@ -59,10 +84,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  const keluarAkun = async () => {
+    setOverrideRole(null);
+    setOverrideIdentitas(null);
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Gagal logout:', err);
+    }
+    router.replace('/(auth)/login');
+  };
+
   const gantiPeran = () => {
-    setRole(null);
-    setIdentitas(null);
-    router.replace('/');
+    keluarAkun();
   };
 
   return (
@@ -80,6 +114,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         daftarPraktikan: DUMMY_PRAKTIKAN,
         daftarAsisten: DUMMY_ASISTEN,
         gantiPeran,
+        keluarAkun,
       }}>
       {children}
     </AppContext.Provider>
