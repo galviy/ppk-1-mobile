@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function profil() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isAsisten() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && profil().role == 'asisten';
+    }
+    function isPeserta(kelasId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/kelas/$(kelasId)).data.pesertaUids;
+    }
+
+    // Profil: dibuat saat registrasi. TODO (modul Auth): batasi pembuatan peran 'asisten'
+    // (mis. kode undangan) karena aturan ini mengizinkan siapa pun mendaftar sebagai asisten.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAsisten());
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role in ['praktikan', 'asisten'];
+      allow update: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role;
+    }
+
+    match /kelas/{kelasId} {
+      allow read: if isAsisten() || (signedIn() && request.auth.uid in resource.data.pesertaUids);
+      allow write: if isAsisten();
+
+      match /peserta/{uid} {
+        allow read: if isAsisten() || (signedIn() && request.auth.uid == uid);
+        allow write: if isAsisten();
+      }
+    }
+
+    match /sesi/{sesiId} {
+      allow read: if isAsisten() || isPeserta(resource.data.kelasId);
+      allow write: if isAsisten();
+
+      match /presensi/{uid} {
+        allow read: if isAsisten() || (signedIn() && request.auth.uid == uid);
+        // create di atas dokumen yang sudah ada dihitung sebagai update => ditolak (anti presensi ganda)
+        allow create: if signedIn() && request.auth.uid == uid
+          && get(/databases/$(database)/documents/sesi/$(sesiId)).data.status == 'dibuka'
+          && isPeserta(get(/databases/$(database)/documents/sesi/$(sesiId)).data.kelasId)
+          && request.resource.data.keys().hasOnly(['uid', 'nama', 'nim', 'kelasId', 'waktu'])
+          && request.resource.data.uid == uid
+          && request.resource.data.kelasId == get(/databases/$(database)/documents/sesi/$(sesiId)).data.kelasId
+          && request.resource.data.waktu == request.time;
+        allow update: if false;
+        allow delete: if isAsisten();
+      }
+    }
+
+    // Koleksi izin dan hasil AI (SRS-03/04) ditambahkan oleh pemiliknya.
+  }
+}

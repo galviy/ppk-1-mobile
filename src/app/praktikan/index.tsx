@@ -1,128 +1,84 @@
+// Jadwal praktikan (FR-02.8) + presensi (FR-02.10 – FR-02.12), real-time dari Firestore.
+import { router } from 'expo-router';
 import React from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
+import { LoadingRow, Notice } from '@/components/notice';
+import PresensiButton from '@/components/PresensiButton';
+import { ScreenShell } from '@/components/screen-shell';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { RoleHeader } from '@/components/ui/role-header';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Spacing } from '@/constants/theme';
-import { useApp } from '@/data/store';
+import type { Profil } from '@/data/models';
+import { useJadwalPraktikan } from '@/hooks/use-praktikum';
+import { tanggalDariIso } from '@/lib/format';
 
 export default function PraktikanJadwalScreen() {
-  const { identitas, daftarSesi } = useApp();
+  return <ScreenShell>{(profil) => <Isi profil={profil} />}</ScreenShell>;
+}
 
-  // Filter jadwal khusus kelas praktikan yang sedang aktif (sesuai SRS-02 § 2.2)
-  const kelasAktif = identitas?.kelas;
-  const jadwalKelas = daftarSesi.filter(
-    (sesi) => !kelasAktif || sesi.kelas === kelasAktif
-  );
+function Isi({ profil }: { profil: Profil }) {
+  const jadwal = useJadwalPraktikan(profil.uid);
+  const namaKelas = (id: string) => jadwal.kelas.find((k) => k.id === id)?.nama ?? '—';
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header Identitas & Ganti Peran (FR-1.4) */}
-        <RoleHeader />
+    <View style={styles.content}>
+      <View style={styles.title}>
+        <ThemedText type="subtitle" style={styles.pageTitle}>Jadwal Sesi</ThemedText>
+        <ThemedText themeColor="textSecondary" style={styles.small}>Sesi pada kelas yang Anda ikuti</ThemedText>
+      </View>
 
-        <View style={styles.content}>
-          <View style={styles.titleSection}>
-            <ThemedText type="subtitle" style={styles.pageTitle}>
-              Jadwal Praktikum
-            </ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.pageSubtitle}>
-              Menampilkan sesi praktikum untuk Kelas {kelasAktif ?? 'A'}
-            </ThemedText>
-          </View>
+      <Notice data={jadwal.error ? { tipe: 'err', teks: jadwal.error } : null} />
 
-          {jadwalKelas.length === 0 ? (
-            <EmptyState
-              title="Belum Ada Jadwal"
-              message={`Tidak ada jadwal praktikum untuk Kelas ${kelasAktif ?? ''}. Hubungi asisten jika ada kendala.`}
-            />
-          ) : (
-            <FlatList
-              data={jadwalKelas}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.listContent}
-              renderItem={({ item }) => (
-                <Card style={styles.sessionCard}>
-                  <View style={styles.cardTopRow}>
-                    <View style={styles.titleWrapper}>
-                      <ThemedText type="smallBold" style={styles.sessionTitle}>
-                        {item.namaPraktikum}
-                      </ThemedText>
-                      <ThemedText
-                        themeColor="textSecondary"
-                        style={styles.sessionInfo}>
-                        Kelas {item.kelas} • {item.tanggal}
-                      </ThemedText>
-                      <ThemedText
-                        themeColor="textSecondary"
-                        style={styles.sessionTime}>
-                        ⏰ {item.jamMulai} - {item.jamSelesai} WIB
-                      </ThemedText>
-                    </View>
-                    <StatusBadge status={item.status} />
-                  </View>
-                </Card>
-              )}
-            />
+      {jadwal.loading ? (
+        <LoadingRow />
+      ) : (
+        <FlatList
+          data={jadwal.sesi}
+          keyExtractor={(s) => s.id}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            jadwal.kelas.length === 0 ? (
+              <EmptyState title="Belum terdaftar di kelas" message="Asisten perlu menambahkan Anda sebagai peserta kelas." />
+            ) : (
+              <EmptyState title="Belum ada jadwal" message="Jadwal sesi untuk kelas Anda belum dibuat." />
+            )
+          }
+          renderItem={({ item }) => (
+            <Card style={styles.card}>
+              <Pressable
+                onPress={() => router.push({ pathname: '/sesi/[id]', params: { id: item.id } })}
+                style={styles.cardTop}>
+                <View style={styles.flex}>
+                  <ThemedText type="smallBold" style={styles.cardTitle}>{item.namaPraktikum}</ThemedText>
+                  <ThemedText themeColor="textSecondary" style={styles.small}>
+                    {namaKelas(item.kelasId)} • {tanggalDariIso(item.tanggal)}
+                  </ThemedText>
+                  <ThemedText themeColor="textSecondary" style={styles.small}>
+                    {item.jamMulai} - {item.jamSelesai} WIB{item.ruang ? ` • ${item.ruang}` : ''}
+                  </ThemedText>
+                </View>
+                <StatusBadge status={item.status} />
+              </Pressable>
+              <PresensiButton sesi={item} />
+            </Card>
           )}
-        </View>
-      </SafeAreaView>
-    </ThemedView>
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-  },
-  titleSection: {
-    paddingVertical: Spacing.three,
-  },
-  pageTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  pageSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  listContent: {
-    paddingBottom: Spacing.four,
-  },
-  sessionCard: {
-    marginVertical: 6,
-    padding: 16,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  titleWrapper: {
-    flex: 1,
-    gap: 4,
-  },
-  sessionTitle: {
-    fontSize: 16,
-  },
-  sessionInfo: {
-    fontSize: 13,
-  },
-  sessionTime: {
-    fontSize: 12,
-    marginTop: 2,
-  },
+  flex: { flex: 1 },
+  content: { flex: 1, paddingHorizontal: Spacing.four },
+  title: { paddingVertical: Spacing.three },
+  pageTitle: { fontSize: 22, lineHeight: 28 },
+  small: { fontSize: 13 },
+  list: { paddingBottom: Spacing.four, flexGrow: 1 },
+  card: { gap: 12 },
+  cardTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  cardTitle: { fontSize: 16 },
 });

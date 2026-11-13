@@ -26,6 +26,14 @@ export default function AsistenTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="kelas"
+        options={{
+          title: 'Kelas',
+          tabBarLabel: 'Kelas',
+          tabBarIcon: () => <Text style={{ fontSize: 18 }}>🏫</Text>,
+        }}
+      />
+      <Tabs.Screen
         name="rekap"
         options={{
           title: 'Rekap Presensi',
@@ -33,6 +41,8 @@ export default function AsistenTabsLayout() {
           tabBarIcon: () => <Text style={{ fontSize: 18 }}>📊</Text>,
         }}
       />
+      {/* layar pendukung (SRS-02): tidak tampil sebagai tab */}
+      <Tabs.Screen name="peserta/[kelasId]" options={{ href: null }} />
     </Tabs>
   );
 }
