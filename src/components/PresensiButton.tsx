@@ -1,50 +1,46 @@
-// Simpan di: src/components/PresensiButton.tsx
+// Tombol presensi praktikan (Firestore). UI bottom sheet konfirmasi tetap dari SRS-04 Sprint 1;
+// data kini lewat transaksi Firestore (anti presensi ganda) + listener real-time.
 import React, { useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useApp } from '@/data/store';
+import type { Sesi } from '@/data/models';
+import { useAuth } from '@/context/AuthContext';
+import { usePresensiSaya } from '@/hooks/use-praktikum';
 import { jamDetik, jamMenit, tanggalPendek } from '@/lib/format';
+import { DuplikatError, pesanError } from '@/lib/validasi';
+import { catatPresensi } from '@/services/praktikum';
 
-// Definisikan tipe Sesi secara lokal agar tidak error meskipun store.tsx tidak mengekspornya
-export type Sesi = {
-  id: string;
-  status: 'belum_dibuka' | 'dibuka' | 'ditutup';
-  namaPraktikum?: string;
-  modul?: string;
-  kelas?: string;
-  tanggal?: string;
-};
-
-type Step = 'konfirmasi' | 'sukses' | 'duplikat' | null;
+type Step = 'konfirmasi' | 'sukses' | 'duplikat' | 'gagal' | null;
 
 export default function PresensiButton({ sesi }: { sesi: Sesi }) {
-  const { identitas, presensi, tambahPresensi } = useApp();
+  const { user } = useAuth();
+  const profil = user ? { uid: user.uid, nama: user.nama, nim: user.nim, role: user.role } : null;
   const insets = useSafeAreaInsets();
+  const saya = usePresensiSaya([sesi.id], profil?.uid ?? null);
 
   const [step, setStep] = useState<Step>(null);
   const [waktuSekarang, setWaktuSekarang] = useState(new Date());
   const [waktuTercatat, setWaktuTercatat] = useState('');
+  const [pesanGagal, setPesanGagal] = useState('');
   const sedangKirim = useRef(false);
 
-  const infoModul = sesi.namaPraktikum ?? sesi.modul ?? 'Praktikum';
-
-  const sudahPresensi = (presensi[sesi.id] ?? []).some((p) => p.praktikanId === identitas?.id);
-  const entriSaya = (presensi[sesi.id] ?? []).find((p) => p.praktikanId === identitas?.id);
+  const infoModul = sesi.namaPraktikum;
+  const entriSaya = saya.data[sesi.id];
+  const sudahPresensi = !!entriSaya;
   const dibuka = sesi.status === 'dibuka';
 
-  // FR-4.1 & FR-4.5
   let label = 'Presensi Sekarang';
-  let keterangan: string | null = null;
-  let aktif = dibuka && !sudahPresensi;
+  let keterangan: string | null = saya.error;
+  const aktif = dibuka && !sudahPresensi && !!profil && !saya.loading;
 
   if (sudahPresensi) {
     label = 'Sudah presensi';
-    keterangan = entriSaya ? `Tercatat hadir pukul ${entriSaya.waktu}` : null;
+    keterangan = `Tercatat hadir pukul ${jamDetik(entriSaya.waktu ?? new Date())}`;
   } else if (sesi.status === 'belum_dibuka') {
-    keterangan = 'Sesi belum dibuka';
+    keterangan = keterangan ?? 'Sesi belum dibuka';
   } else if (sesi.status === 'ditutup') {
-    keterangan = 'Sesi sudah ditutup';
+    keterangan = keterangan ?? 'Sesi sudah ditutup';
   }
 
   const bukaKonfirmasi = () => {
@@ -52,31 +48,23 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
     setStep('konfirmasi');
   };
 
-  const kirim = () => {
-    if (sedangKirim.current) return; // cegah double-tap
+  const kirim = async () => {
+    if (sedangKirim.current || !profil) return; // cegah double-tap
     sedangKirim.current = true;
-
-    if (sudahPresensi) {
-      setStep('duplikat');
-      sedangKirim.current = false;
-      return;
-    }
-
-    const waktu = jamDetik(new Date()); // FR-4.3
-    const hasil = tambahPresensi(sesi.id, {
-      praktikanId: identitas?.id ?? '',
-      nama: identitas?.nama ?? '',
-      kelas: (identitas?.kelas ?? 'A') as any, // Cast untuk mengatasi error tipe kelas "" vs union
-      waktu,
-    });
-
-    if (hasil === false) {
-      setStep('duplikat');
-    } else {
-      setWaktuTercatat(waktu);
+    try {
+      await catatPresensi(sesi.id, profil);
+      setWaktuTercatat(jamDetik(new Date()));
       setStep('sukses');
+    } catch (e) {
+      if (e instanceof DuplikatError) {
+        setStep('duplikat');
+      } else {
+        setPesanGagal(pesanError(e));
+        setStep('gagal');
+      }
+    } finally {
+      sedangKirim.current = false;
     }
-    sedangKirim.current = false;
   };
 
   return (
@@ -115,7 +103,7 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
               <>
                 <Text style={styles.judul}>Konfirmasi Presensi</Text>
                 <Text style={styles.nama}>
-                  {identitas?.nama} - Kelas {identitas?.kelas}
+                  {profil?.nama}{profil?.nim ? ` • ${profil.nim}` : ''}
                 </Text>
                 <Text style={styles.baris}>{infoModul}</Text>
                 <Text style={styles.baris}>
@@ -126,7 +114,7 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
                   <Pressable style={[styles.aksiBtn, styles.batal]} onPress={() => setStep(null)}>
                     <Text style={styles.batalText}>Batal</Text>
                   </Pressable>
-                  <Pressable style={[styles.aksiBtn, styles.kirim]} onPress={kirim}>
+                  <Pressable style={[styles.aksiBtn, styles.kirim]} onPress={() => void kirim()}>
                     <Text style={styles.kirimText}>Kirim Presensi</Text>
                   </Pressable>
                 </View>
@@ -140,6 +128,16 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
                   Presensi tercatat {waktuTercatat}
                 </Text>
                 <Text style={[styles.baris, { textAlign: 'center' }]}>{infoModul}</Text>
+                <Pressable style={[styles.aksiBtn, styles.kirim, { marginTop: 16 }]} onPress={() => setStep(null)}>
+                  <Text style={styles.kirimText}>Tutup</Text>
+                </Pressable>
+              </>
+            )}
+
+            {step === 'gagal' && (
+              <>
+                <Text style={[styles.judul, { textAlign: 'center' }]}>Presensi gagal</Text>
+                <Text style={[styles.baris, { textAlign: 'center' }]}>{pesanGagal}</Text>
                 <Pressable style={[styles.aksiBtn, styles.kirim, { marginTop: 16 }]} onPress={() => setStep(null)}>
                   <Text style={styles.kirimText}>Tutup</Text>
                 </Pressable>

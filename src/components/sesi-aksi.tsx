@@ -1,37 +1,49 @@
-// Tombol buka/tutup sesi + modal konfirmasi (SRS-03 FR-3.1 – FR-3.4).
-// Dipakai di tab Kelola Sesi dan dapat dipasang di slot tombol /sesi/[id] (SRS-02):
-//   <SesiAksi sesiId={id} />
+// Buka/tutup sesi (FR-02.9) dengan modal konfirmasi. Dipakai di tab Sesi asisten.
 import React, { useState } from 'react';
 
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { useApp } from '@/data/store';
+import type { Sesi } from '@/data/models';
+import { pesanError } from '@/lib/validasi';
+import { setStatusSesi } from '@/services/praktikum';
 
-export function SesiAksi({ sesiId }: { sesiId: string }) {
-  const { daftarSesi, presensi, setSesiStatus } = useApp();
+type Props = {
+  sesi: Sesi;
+  namaKelas: string;
+  jumlahHadir?: number;
+  onResult: (tipe: 'ok' | 'err', teks: string) => void;
+};
+
+export function SesiAksi({ sesi, namaKelas, jumlahHadir, onResult }: Props) {
   const [visible, setVisible] = useState(false);
-
-  const sesi = daftarSesi.find((s) => s.id === sesiId);
-  if (!sesi) return null;
+  const [busy, setBusy] = useState(false);
 
   if (sesi.status === 'ditutup') {
     return <PrimaryButton label="Sesi sudah ditutup" onPress={() => {}} disabled />;
   }
 
   const akanBuka = sesi.status === 'belum_dibuka';
-  const nama = `${sesi.namaPraktikum} — Kelas ${sesi.kelas}`;
-  const jumlahHadir = presensi[sesiId]?.length ?? 0;
+  const nama = `${sesi.namaPraktikum} — ${namaKelas}`;
 
-  const konfirmasi = () => {
-    setSesiStatus(sesiId, akanBuka ? 'dibuka' : 'ditutup');
+  const konfirmasi = async () => {
     setVisible(false);
+    setBusy(true);
+    try {
+      await setStatusSesi(sesi.id, akanBuka ? 'dibuka' : 'ditutup');
+      onResult('ok', akanBuka ? 'Sesi berhasil dibuka.' : 'Sesi berhasil ditutup.');
+    } catch (e) {
+      onResult('err', pesanError(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <>
       <PrimaryButton
-        label={akanBuka ? 'Buka Sesi' : 'Tutup Sesi'}
+        label={busy ? 'Memproses…' : akanBuka ? 'Buka Sesi' : 'Tutup Sesi'}
         variant={akanBuka ? 'primary' : 'danger'}
+        disabled={busy}
         onPress={() => setVisible(true)}
       />
       <ConfirmModal
@@ -40,12 +52,12 @@ export function SesiAksi({ sesiId }: { sesiId: string }) {
         message={
           akanBuka
             ? 'Praktikan dapat melakukan presensi setelah sesi dibuka.'
-            : `Saat ini ${jumlahHadir} praktikan sudah hadir. Setelah ditutup, presensi tidak dapat dilakukan lagi.`
+            : `${jumlahHadir ?? 0} praktikan sudah hadir. Setelah ditutup, presensi tidak dapat dilakukan lagi.`
         }
         confirmLabel={akanBuka ? 'Ya, Buka' : 'Ya, Tutup'}
         variant={akanBuka ? 'primary' : 'danger'}
         onCancel={() => setVisible(false)}
-        onConfirm={konfirmasi}
+        onConfirm={() => void konfirmasi()}
       />
     </>
   );
