@@ -33,6 +33,14 @@ export default function PraktikanTabsLayout() {
           tabBarIcon: () => <Text style={{ fontSize: 18 }}>📝</Text>,
         }}
       />
+      <Tabs.Screen
+        name="izin"
+        options={{
+          title: 'Pengajuan Izin',
+          tabBarLabel: 'Izin',
+          tabBarIcon: () => <Text style={{ fontSize: 18 }}>✉️</Text>,
+        }}
+      />
     </Tabs>
   );
 }
