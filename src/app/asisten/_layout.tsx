@@ -41,6 +41,14 @@ export default function AsistenTabsLayout() {
           tabBarIcon: () => <Text style={{ fontSize: 18 }}>📊</Text>,
         }}
       />
+      <Tabs.Screen
+        name="izin"
+        options={{
+          title: 'Pengajuan Izin',
+          tabBarLabel: 'Izin',
+          tabBarIcon: () => <Text style={{ fontSize: 18 }}>✉️</Text>,
+        }}
+      />
       {/* layar pendukung (SRS-02): tidak tampil sebagai tab */}
       <Tabs.Screen name="peserta/[kelasId]" options={{ href: null }} />
     </Tabs>
