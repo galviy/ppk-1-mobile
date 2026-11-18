@@ -1,5 +1,5 @@
-// Hook listener real-time: state { data, loading, error } yang selalu mengikuti Firestore.
-import { useEffect, useMemo, useState } from 'react';
+// Hook listener real-time: state { data, loading, error, retry } yang selalu mengikuti Firestore.
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Kelas, Peserta, Presensi, Profil, Sesi } from '@/data/models';
 import { pesanError } from '@/lib/validasi';
@@ -17,27 +17,53 @@ import {
   type Subscribe,
 } from '@/services/praktikum';
 
-export type Live<T> = { data: T; loading: boolean; error: string | null };
+export type Live<T> = { data: T; loading: boolean; error: string | null; retry: () => void };
 
 const KOSONG = { kelas: [] as Kelas[], sesi: [] as Sesi[], peserta: [] as Peserta[],
   presensi: [] as Presensi[], profil: [] as Profil[], map: {} as Record<string, Presensi> };
 
-/** `subscribe` harus stabil (modul-level atau useMemo); null = belum perlu berlangganan. */
+/**
+ * `subscribe` harus stabil (modul-level atau useMemo); null = belum perlu berlangganan.
+ * `retry` memaksa listener dibuat ulang setelah error koneksi/permission (FR-04.12).
+ */
 function useLive<T>(subscribe: Subscribe<T> | null, initial: T): Live<T> {
-  const [state, setState] = useState<Live<T> & { src: unknown }>({
-    src: null, data: initial, loading: true, error: null,
-  });
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<{
+    src: unknown;
+    attempt: number;
+    data: T;
+    loading: boolean;
+    error: string | null;
+  }>({ src: null, attempt: -1, data: initial, loading: true, error: null });
+
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
     if (!subscribe) return;
-    return subscribe(
-      (data) => setState({ src: subscribe, data, loading: false, error: null }),
-      (e) => setState({ src: subscribe, data: initial, loading: false, error: pesanError(e) }),
-    );
-  }, [subscribe, initial]);
+    let aktif = true;
 
-  if (subscribe && state.src === subscribe) return state;
-  return { data: initial, loading: subscribe !== null, error: null };
+    const unsubscribe = subscribe(
+      (data) => {
+        if (aktif) setState({ src: subscribe, attempt, data, loading: false, error: null });
+      },
+      (e) => {
+        if (aktif) {
+          setState({ src: subscribe, attempt, data: initial, loading: false, error: pesanError(e) });
+        }
+      },
+    );
+
+    return () => {
+      aktif = false;
+      unsubscribe();
+    };
+  }, [subscribe, initial, attempt]);
+
+  if (!subscribe) return { data: initial, loading: false, error: null, retry };
+  if (state.src === subscribe && state.attempt === attempt) {
+    return { data: state.data, loading: state.loading, error: state.error, retry };
+  }
+  return { data: initial, loading: true, error: null, retry };
 }
 
 export const useKelasAsisten = () => useLive(subscribeKelasAsisten, KOSONG.kelas);
@@ -69,6 +95,10 @@ export function useJadwalPraktikan(uid: string) {
     sesi: sesi.data,
     loading: kelas.loading || sesi.loading,
     error: kelas.error ?? sesi.error,
+    retry: () => {
+      kelas.retry();
+      sesi.retry();
+    },
   };
 }
 

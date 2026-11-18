@@ -19,7 +19,6 @@ import { InputField } from '@/components/ui/input-field';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { Role } from '@/data/types';
 import { getAuthErrorMessage } from '@/services/authService';
 
 export default function RegisterScreen() {
@@ -29,10 +28,8 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<Role>('praktikan');
   const [nim, setNim] = useState('');
   const [kelas, setKelas] = useState<'A' | 'B'>('A');
-  const [nip, setNip] = useState('');
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +58,7 @@ export default function RegisterScreen() {
       setErrorMessage('Konfirmasi kata sandi tidak cocok.');
       return;
     }
-    if (role === 'praktikan' && !nim.trim()) {
+    if (!nim.trim()) {
       setErrorMessage('NIM wajib diisi untuk peran Praktikan.');
       return;
     }
@@ -69,17 +66,17 @@ export default function RegisterScreen() {
     setIsLoading(true);
     try {
       // Registrasi akun Firebase Auth & simpan profil ke Firestore (FR-01.1, FR-01.4, FR-01.5, FR-01.6)
+      // Peran unggah mandiri selalu 'praktikan'; akun asisten dibuat/dipromosikan oleh asisten (FR-04.4)
       const userProfile = await register({
         email,
         password,
         nama,
-        role,
-        nim: role === 'praktikan' ? nim : undefined,
-        kelas: role === 'praktikan' ? kelas : undefined,
-        nip: role === 'asisten' ? nip : undefined,
+        role: 'praktikan',
+        nim,
+        kelas,
       });
 
-      // Arahkan otomatis ke dashboard sesuai perannya (FR-01.8)
+      // Arahkan otomatis ke dashboard praktikan (FR-01.8)
       if (userProfile.role === 'praktikan') {
         router.replace('/praktikan');
       } else {
@@ -119,7 +116,7 @@ export default function RegisterScreen() {
                 Registrasi Akun Baru
               </ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-                Daftar akun praktikum dan tentukan peran Anda sebagai Praktikan atau Asisten
+                Daftar akun praktikan. Akun asisten dibuat oleh asisten laboratorium.
               </ThemedText>
             </View>
 
@@ -131,62 +128,6 @@ export default function RegisterScreen() {
                   <Text style={styles.errorText}>{errorMessage}</Text>
                 </View>
               )}
-
-              {/* Pemilihan Peran (FR-01.6) */}
-              <View style={styles.roleSection}>
-                <Text style={styles.roleLabel}>Pilih Peran Pengguna *</Text>
-                <View style={styles.roleSelector}>
-                  <Pressable
-                    onPress={() => setRole('praktikan')}
-                    style={[
-                      styles.roleChip,
-                      role === 'praktikan' && styles.roleChipActivePraktikan,
-                    ]}>
-                    <Text style={styles.roleChipEmoji}>🎓</Text>
-                    <View>
-                      <Text
-                        style={[
-                          styles.roleChipTitle,
-                          role === 'praktikan' && styles.roleChipTextActive,
-                        ]}>
-                        Praktikan
-                      </Text>
-                      <Text
-                        style={[
-                          styles.roleChipDesc,
-                          role === 'praktikan' && styles.roleChipTextActive,
-                        ]}>
-                        Mahasiswa peserta
-                      </Text>
-                    </View>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => setRole('asisten')}
-                    style={[
-                      styles.roleChip,
-                      role === 'asisten' && styles.roleChipActiveAsisten,
-                    ]}>
-                    <Text style={styles.roleChipEmoji}>👨‍🏫</Text>
-                    <View>
-                      <Text
-                        style={[
-                          styles.roleChipTitle,
-                          role === 'asisten' && styles.roleChipTextActive,
-                        ]}>
-                        Asisten
-                      </Text>
-                      <Text
-                        style={[
-                          styles.roleChipDesc,
-                          role === 'asisten' && styles.roleChipTextActive,
-                        ]}>
-                        Pengelola praktikum
-                      </Text>
-                    </View>
-                  </Pressable>
-                </View>
-              </View>
 
               <InputField
                 label="Nama Lengkap"
@@ -216,59 +157,44 @@ export default function RegisterScreen() {
               />
 
               {/* Field Khusus Praktikan */}
-              {role === 'praktikan' && (
-                <>
-                  <InputField
-                    label="NIM (Nomor Induk Mahasiswa)"
-                    value={nim}
-                    onChangeText={(text) => {
-                      setNim(text);
-                      if (errorMessage) setErrorMessage(null);
-                    }}
-                    placeholder="Contoh: 21120120140001"
-                    keyboardType="number-pad"
-                    required
-                    disabled={isLoading}
-                  />
+              <InputField
+                label="NIM (Nomor Induk Mahasiswa)"
+                value={nim}
+                onChangeText={(text) => {
+                  setNim(text);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                placeholder="Contoh: 21120120140001"
+                keyboardType="number-pad"
+                required
+                disabled={isLoading}
+              />
 
-                  <View style={styles.kelasSection}>
-                    <Text style={styles.roleLabel}>Pilih Kelas Praktikum *</Text>
-                    <View style={styles.kelasRow}>
-                      {(['A', 'B'] as const).map((k) => {
-                        const isSelected = kelas === k;
-                        return (
-                          <Pressable
-                            key={k}
-                            onPress={() => setKelas(k)}
-                            style={[
-                              styles.kelasChip,
-                              isSelected && styles.kelasChipActive,
-                            ]}>
-                            <Text
-                              style={[
-                                styles.kelasChipText,
-                                isSelected && styles.kelasChipTextActive,
-                              ]}>
-                              Kelas {k}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  </View>
-                </>
-              )}
-
-              {/* Field Khusus Asisten */}
-              {role === 'asisten' && (
-                <InputField
-                  label="Kode Asisten / NIP (Opsional)"
-                  value={nip}
-                  onChangeText={setNip}
-                  placeholder="Contoh: AST-01 / 198501..."
-                  disabled={isLoading}
-                />
-              )}
+              <View style={styles.kelasSection}>
+                <Text style={styles.roleLabel}>Pilih Kelas Praktikum *</Text>
+                <View style={styles.kelasRow}>
+                  {(['A', 'B'] as const).map((k) => {
+                    const isSelected = kelas === k;
+                    return (
+                      <Pressable
+                        key={k}
+                        onPress={() => setKelas(k)}
+                        style={[
+                          styles.kelasChip,
+                          isSelected && styles.kelasChipActive,
+                        ]}>
+                        <Text
+                          style={[
+                            styles.kelasChipText,
+                            isSelected && styles.kelasChipTextActive,
+                          ]}>
+                          Kelas {k}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
 
               <InputField
                 label="Kata Sandi"
@@ -398,53 +324,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '500',
   },
-  roleSection: {
-    marginBottom: 16,
-  },
   roleLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1E293B',
     marginBottom: 8,
-  },
-  roleSelector: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  roleChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-    gap: 10,
-  },
-  roleChipActivePraktikan: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
-  },
-  roleChipActiveAsisten: {
-    borderColor: '#D97706',
-    backgroundColor: '#FFFBEB',
-  },
-  roleChipEmoji: {
-    fontSize: 24,
-  },
-  roleChipTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  roleChipDesc: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 1,
-  },
-  roleChipTextActive: {
-    color: '#0F172A',
   },
   kelasSection: {
     marginBottom: 16,

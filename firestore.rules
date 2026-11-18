@@ -9,20 +9,25 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && profil().role == 'asisten';
     }
+    function isPraktikan() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && profil().role == 'praktikan';
+    }
     function isPeserta(kelasId) {
       return signedIn()
         && request.auth.uid in get(/databases/$(database)/documents/kelas/$(kelasId)).data.pesertaUids;
     }
-
-    // Profil: dibuat saat registrasi. TODO (modul Auth): batasi pembuatan peran 'asisten'
-    // (mis. kode undangan) karena aturan ini mengizinkan siapa pun mendaftar sebagai asisten.
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAsisten());
-      allow create: if signedIn() && request.auth.uid == uid
-                    && request.resource.data.role in ['praktikan', 'asisten'];
-      allow update: if signedIn() && request.auth.uid == uid
-                    && request.resource.data.role == resource.data.role;
+
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid && request.resource.data.role == 'praktikan';
+
+      allow update: if signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role;
+
+      allow update: if isAsisten() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) && request.resource.data.role in ['praktikan', 'asisten'];
     }
+
 
     match /kelas/{kelasId} {
       allow read: if isAsisten() || (signedIn() && request.auth.uid in resource.data.pesertaUids);
@@ -40,7 +45,6 @@ service cloud.firestore {
 
       match /presensi/{uid} {
         allow read: if isAsisten() || (signedIn() && request.auth.uid == uid);
-        // create di atas dokumen yang sudah ada dihitung sebagai update => ditolak (anti presensi ganda)
         allow create: if signedIn() && request.auth.uid == uid
           && get(/databases/$(database)/documents/sesi/$(sesiId)).data.status == 'dibuka'
           && isPeserta(get(/databases/$(database)/documents/sesi/$(sesiId)).data.kelasId)
@@ -53,6 +57,40 @@ service cloud.firestore {
       }
     }
 
-    // Koleksi izin dan hasil AI (SRS-03/04) ditambahkan oleh pemiliknya.
+    // ===== SRS-03: pengajuan izin =====
+    match /izin/{izinId} {
+      function sesiDoc() {
+        return get(/databases/$(database)/documents/sesi/$(request.resource.data.sesiId)).data;
+      }
+      allow read: if isAsisten() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isPraktikan()
+        && izinId == request.resource.data.sesiId + '_' + request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid','nama','kelasId','sesiId','alasan','sentimen','status','diajukanPada'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.nama == profil().nama
+        && request.resource.data.status == 'menunggu'
+        && request.resource.data.diajukanPada == request.time
+        && request.resource.data.alasan is string
+        && request.resource.data.alasan.size() >= 3 && request.resource.data.alasan.size() <= 500
+        && request.resource.data.sentimen is map
+        && request.resource.data.sentimen.keys().hasOnly(['label','status','source','experimental'])
+        && request.resource.data.sentimen.source == 'model-edom'
+        && request.resource.data.sentimen.experimental == true
+        && request.resource.data.sentimen.status in ['predicted','empty_input','unknown_vocabulary','error']
+        && (!('label' in request.resource.data.sentimen)
+            || request.resource.data.sentimen.label == null
+            || request.resource.data.sentimen.label in ['negatif','netral','positif'])
+        && sesiDoc().status != 'ditutup'
+        && request.resource.data.kelasId == sesiDoc().kelasId
+        && isPeserta(sesiDoc().kelasId)
+        && !exists(/databases/$(database)/documents/sesi/$(request.resource.data.sesiId)/presensi/$(request.auth.uid));
+      allow update: if isAsisten()
+        && resource.data.status == 'menunggu'
+        && request.resource.data.status in ['diterima','ditolak']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','diputuskanOleh','diputuskanPada'])
+        && request.resource.data.diputuskanOleh == request.auth.uid
+        && request.resource.data.diputuskanPada == request.time;
+      allow delete: if false;
+    }
   }
 }

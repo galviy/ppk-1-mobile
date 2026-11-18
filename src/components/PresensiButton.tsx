@@ -138,9 +138,14 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
               <>
                 <Text style={[styles.judul, { textAlign: 'center' }]}>Presensi gagal</Text>
                 <Text style={[styles.baris, { textAlign: 'center' }]}>{pesanGagal}</Text>
-                <Pressable style={[styles.aksiBtn, styles.kirim, { marginTop: 16 }]} onPress={() => setStep(null)}>
-                  <Text style={styles.kirimText}>Tutup</Text>
-                </Pressable>
+                <View style={styles.aksi}>
+                  <Pressable style={[styles.aksiBtn, styles.batal]} onPress={() => setStep(null)}>
+                    <Text style={styles.batalText}>Tutup</Text>
+                  </Pressable>
+                  <Pressable style={[styles.aksiBtn, styles.kirim]} onPress={() => void kirim()}>
+                    <Text style={styles.kirimText}>Coba Lagi</Text>
+                  </Pressable>
+                </View>
               </>
             )}
 

@@ -1,6 +1,6 @@
 // Hook listener real-time untuk SRS-03 (Pengajuan & Pemeriksaan Izin).
 // Mengikuti pola `Live<T>` pada `src/hooks/use-praktikum.ts`.
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Izin } from '@/data/izin-types';
 import type { Live } from '@/hooks/use-praktikum';
@@ -15,23 +15,49 @@ import type { Subscribe } from '@/services/praktikum';
 const KOSONG_IZIN: Izin[] = [];
 
 function useLiveIzin<T>(subscribe: Subscribe<T> | null, initial: T): Live<T> {
-  const [state, setState] = useState<Live<T> & { src: unknown }>({
-    src: null,
-    data: initial,
-    loading: true,
-    error: null,
-  });
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<{
+    src: unknown;
+    attempt: number;
+    data: T;
+    loading: boolean;
+    error: string | null;
+  }>({ src: null, attempt: -1, data: initial, loading: true, error: null });
+
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
     if (!subscribe) return;
-    return subscribe(
-      (data) => setState({ src: subscribe, data, loading: false, error: null }),
-      (e) => setState({ src: subscribe, data: initial, loading: false, error: pesanErrorIzin(e) }),
-    );
-  }, [subscribe, initial]);
+    let aktif = true;
 
-  if (subscribe && state.src === subscribe) return state;
-  return { data: initial, loading: subscribe !== null, error: null };
+    const unsubscribe = subscribe(
+      (data) => {
+        if (aktif) setState({ src: subscribe, attempt, data, loading: false, error: null });
+      },
+      (e) => {
+        if (aktif) {
+          setState({
+            src: subscribe,
+            attempt,
+            data: initial,
+            loading: false,
+            error: pesanErrorIzin(e),
+          });
+        }
+      },
+    );
+
+    return () => {
+      aktif = false;
+      unsubscribe();
+    };
+  }, [subscribe, initial, attempt]);
+
+  if (!subscribe) return { data: initial, loading: false, error: null, retry };
+  if (state.src === subscribe && state.attempt === attempt) {
+    return { data: state.data, loading: state.loading, error: state.error, retry };
+  }
+  return { data: initial, loading: true, error: null, retry };
 }
 
 /**

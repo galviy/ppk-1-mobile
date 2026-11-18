@@ -23,16 +23,24 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
     const inAuthGroup = firstSegment === '(auth)';
     const inPraktikanGroup = firstSegment === 'praktikan';
     const inAsistenGroup = firstSegment === 'asisten';
+    const inIzinGroup = firstSegment === 'izin';
+    const isPilihIdentitas = firstSegment === 'pilih-identitas';
     const isRoot = !firstSegment || firstSegment === 'index';
 
     if (!user) {
-      // Jika pengguna belum login dan mencoba mengakses rute yang dilindungi (FR-01.11)
-      if (inPraktikanGroup || inAsistenGroup || firstSegment === 'sesi') {
+      // Jika pengguna belum login dan mencoba mengakses rute yang dilindungi (FR-01.11, FR-04.8)
+      if (
+        inPraktikanGroup ||
+        inAsistenGroup ||
+        inIzinGroup ||
+        firstSegment === 'sesi' ||
+        isPilihIdentitas
+      ) {
         router.replace('/(auth)/login');
       }
     } else {
       // Pengguna sudah login (FR-01.8, FR-01.9, FR-01.11)
-      if (inAuthGroup || isRoot) {
+      if (inAuthGroup || isRoot || isPilihIdentitas) {
         if (user.role === 'praktikan') {
           router.replace('/praktikan');
         } else {

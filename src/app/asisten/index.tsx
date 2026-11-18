@@ -96,7 +96,10 @@ function Isi() {
         />
       </View>
 
-      <Notice data={notice ?? (error ? { tipe: 'err', teks: error } : null)} />
+      <Notice
+        data={notice ?? (error ? { tipe: 'err', teks: error } : null)}
+        onRetry={notice ? undefined : () => { kelas.retry(); sesi.retry(); }}
+      />
 
       {sesi.loading || kelas.loading ? (
         <LoadingRow />

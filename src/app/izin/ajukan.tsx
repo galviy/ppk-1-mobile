@@ -91,7 +91,14 @@ function Isi({ profil }: { profil: Profil }) {
         </ThemedText>
       </View>
 
-      <Notice data={notice ?? (error ? { tipe: 'err', teks: error } : null)} />
+      <Notice
+        data={notice ?? (error ? { tipe: 'err', teks: error } : null)}
+        onRetry={
+          notice
+            ? undefined
+            : () => { jadwal.retry(); presensiSaya.retry(); izinSaya.retry(); }
+        }
+      />
 
       {loading ? (
         <LoadingRow />

@@ -30,7 +30,10 @@ function Isi({ profil }: { profil: Profil }) {
         <ThemedText themeColor="textSecondary" style={styles.small}>Sesi pada kelas yang Anda ikuti</ThemedText>
       </View>
 
-      <Notice data={jadwal.error ? { tipe: 'err', teks: jadwal.error } : null} />
+      <Notice
+        data={jadwal.error ? { tipe: 'err', teks: jadwal.error } : null}
+        onRetry={jadwal.retry}
+      />
 
       {jadwal.loading ? (
         <LoadingRow />

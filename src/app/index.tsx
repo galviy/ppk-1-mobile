@@ -1,9 +1,7 @@
 import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -15,12 +13,9 @@ import { Card } from '@/components/ui/card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { useApp } from '@/data/store';
-import { Role } from '@/data/types';
 
 export default function IndexScreen() {
   const { user, isLoading } = useAuth();
-  const { setRole } = useApp();
 
   // Mempertahankan sesi login dan mengarahkan otomatis sesuai role (FR-01.8 & FR-01.9)
   useEffect(() => {
@@ -36,15 +31,6 @@ export default function IndexScreen() {
       }
     }
   }, [user, isLoading]);
-
-  // Mode Uji Coba Dummy (Opsional untuk testing offline Sprint 1)
-  const handlePilihPeranDummy = (selectedRole: Role) => {
-    setRole(selectedRole);
-    router.push({
-      pathname: '/pilih-identitas',
-      params: { role: selectedRole },
-    });
-  };
 
   if (isLoading) {
     return (
@@ -83,7 +69,7 @@ export default function IndexScreen() {
                   Autentikasi Firebase (SRS-01)
                 </ThemedText>
                 <ThemedText themeColor="textSecondary" style={styles.roleDesc}>
-                  Masuk dengan akun terdaftar atau buat akun baru dengan peran Praktikan / Asisten.
+                  Masuk dengan akun terdaftar atau buat akun praktikan baru.
                 </ThemedText>
               </View>
             </View>
@@ -93,25 +79,6 @@ export default function IndexScreen() {
               style={styles.cardButton}
             />
           </Card>
-
-          {/* Opsi Mode Demo Cepat */}
-          <View style={styles.devBox}>
-            <ThemedText type="smallBold" style={styles.devTitle}>
-              🛠️ Mode Pengujian Cepat
-            </ThemedText>
-            <View style={styles.devRow}>
-              <Pressable
-                onPress={() => handlePilihPeranDummy('praktikan')}
-                style={styles.devChip}>
-                <Text style={styles.devChipText}>Demo Praktikan</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => handlePilihPeranDummy('asisten')}
-                style={styles.devChip}>
-                <Text style={styles.devChipText}>Demo Asisten</Text>
-              </Pressable>
-            </View>
-          </View>
         </View>
 
         <View style={styles.footer}>
@@ -210,36 +177,6 @@ const styles = StyleSheet.create({
   },
   cardButton: {
     marginTop: 4,
-  },
-  devBox: {
-    padding: 14,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 8,
-  },
-  devTitle: {
-    fontSize: 13,
-    color: '#475569',
-  },
-  devRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  devChip: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    alignItems: 'center',
-  },
-  devChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
   },
   footer: {
     alignItems: 'center',

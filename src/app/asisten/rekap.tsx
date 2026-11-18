@@ -36,7 +36,10 @@ function Isi() {
   return (
     <View style={styles.content}>
       <ThemedText type="subtitle" style={styles.pageTitle}>Rekap Presensi</ThemedText>
-      <Notice data={error ? { tipe: 'err', teks: error } : null} />
+      <Notice
+        data={error ? { tipe: 'err', teks: error } : null}
+        onRetry={() => { sesiList.retry(); kelas.retry(); presensi.retry(); peserta.retry(); }}
+      />
 
       {sesiList.loading ? (
         <LoadingRow />

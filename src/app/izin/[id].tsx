@@ -93,7 +93,10 @@ function Isi({ profil }: { profil: Profil }) {
         </ThemedText>
       </Pressable>
 
-      <Notice data={notice ?? (error ? { tipe: 'err', teks: error } : null)} />
+      <Notice
+        data={notice ?? (error ? { tipe: 'err', teks: error } : null)}
+        onRetry={notice ? undefined : () => { izin.retry(); sesi.retry(); kelas.retry(); }}
+      />
 
       {izin.loading ? (
         <LoadingRow />
