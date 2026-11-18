@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -15,11 +15,13 @@ import { Card } from '@/components/ui/card';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/data/store';
 import { Asisten, Praktikan, Role, UserIdentitas } from '@/data/types';
 
 export default function PilihIdentitasScreen() {
   const params = useLocalSearchParams<{ role?: string }>();
+  const { user, isLoading } = useAuth();
   const {
     role: contextRole,
     setRole,
@@ -34,6 +36,11 @@ export default function PilihIdentitasScreen() {
   const [selectedUser, setSelectedUser] = useState<UserIdentitas | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
+
+  // FR-04.8: moda identitas dummy tidak boleh dipakai tanpa sesi login
+  if (!isLoading && !user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   const handleSelect = (user: Praktikan | Asisten) => {
     setErrorMsg(null);

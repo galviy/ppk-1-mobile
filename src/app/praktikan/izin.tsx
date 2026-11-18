@@ -52,7 +52,10 @@ function Isi({ profil }: { profil: Profil }) {
         />
       </View>
 
-      <Notice data={error ? { tipe: 'err', teks: error } : null} />
+      <Notice
+        data={error ? { tipe: 'err', teks: error } : null}
+        onRetry={() => { izinSaya.retry(); jadwal.retry(); }}
+      />
 
       {loading ? (
         <LoadingRow />

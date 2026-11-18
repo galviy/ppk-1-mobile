@@ -34,7 +34,10 @@ function Isi({ profil }: { profil: Profil }) {
         <ThemedText type="subtitle" style={styles.pageTitle}>Riwayat Presensi</ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.small}>{riwayat.length} kehadiran tercatat</ThemedText>
       </View>
-      <Notice data={error ? { tipe: 'err', teks: error } : null} />
+      <Notice
+        data={error ? { tipe: 'err', teks: error } : null}
+        onRetry={() => { jadwal.retry(); hadir.retry(); }}
+      />
 
       {loading ? (
         <LoadingRow />

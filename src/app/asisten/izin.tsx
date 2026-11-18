@@ -78,7 +78,10 @@ function Isi() {
         </ThemedText>
       </View>
 
-      <Notice data={error ? { tipe: 'err', teks: error } : null} />
+      <Notice
+        data={error ? { tipe: 'err', teks: error } : null}
+        onRetry={() => { semuaIzin.retry(); sesi.retry(); kelas.retry(); }}
+      />
 
       <View>
         <ScrollView

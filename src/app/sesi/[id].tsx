@@ -42,7 +42,10 @@ function Isi({ peran }: { peran: Peran }) {
       <Pressable onPress={() => router.back()}>
         <ThemedText type="smallBold" style={styles.back}>← Kembali</ThemedText>
       </Pressable>
-      <Notice data={notice ?? (error ? { tipe: 'err', teks: error } : null)} />
+      <Notice
+        data={notice ?? (error ? { tipe: 'err', teks: error } : null)}
+        onRetry={notice ? undefined : () => { sesi.retry(); kelas.retry(); }}
+      />
 
       {sesi.loading ? (
         <LoadingRow />

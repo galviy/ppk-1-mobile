@@ -84,7 +84,10 @@ function Isi() {
           onPress={() => { setFormError(null); setForm({ uid: '', nama: '', nim: '', baru: true }); }} />
       </View>
 
-      <Notice data={notice ?? (peserta.error ? { tipe: 'err', teks: peserta.error } : null)} />
+      <Notice
+        data={notice ?? (peserta.error ? { tipe: 'err', teks: peserta.error } : null)}
+        onRetry={notice ? undefined : () => { peserta.retry(); praktikan.retry(); }}
+      />
 
       {peserta.loading ? (
         <LoadingRow />
