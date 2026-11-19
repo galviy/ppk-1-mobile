@@ -1,73 +1,189 @@
-# Sprint 1 - Antarmuka dan Alur Praktikum
+# Aplikasi Praktikum PPK
 
-Kegiatan praktikum membutuhkan pencatatan kehadiran yang mudah digunakan oleh praktikan dan asisten. Asisten perlu melihat jadwal, membuka sesi ketika praktikum dimulai, memantau kehadiran, dan menutup sesi setelah selesai. Praktikan perlu mengetahui jadwal dan detail sesi, melakukan presensi, serta melihat catatan kehadirannya.
+Aplikasi mobile presensi dan manajemen kegiatan praktikum berbasis React Native dan Expo untuk **Praktikan** dan **Asisten**. Mendukung pengelolaan kelas, peserta, jadwal/sesi, pencatatan presensi real-time, serta pengajuan izin dengan analisis sentimen lokal. Pada Sprint 3, aplikasi dikembangkan dengan validasi lokasi presensi, peta laboratorium interaktif, dan push notification.
 
-Pada sprint ini, bangun aplikasi React Native yang dapat mendemonstrasikan kegiatan tersebut melalui dua sudut pandang: praktikan dan asisten. Tentukan sendiri susunan halaman, navigasi, dan bentuk interaksi yang membantu masing-masing pengguna menyelesaikan kegiatannya.
+---
 
-Kebutuhan yang harus dipenuhi:
+## Status Pengembangan per Sprint
 
-Jadwal dan detail sesi. Pengguna dapat melihat daftar jadwal serta informasi sesi, seperti nama praktikum, kelas, waktu, dan status sesi.
-Pengelolaan sesi. Asisten dapat membuka dan menutup sesi. Perubahan status tersebut harus terlihat pada antarmuka yang berkaitan.
-Pencatatan presensi. Praktikan dapat melakukan presensi ketika sesi dibuka. Aplikasi mencatat waktu kehadiran dan memberikan umpan balik bahwa presensi berhasil. Praktikan yang sama tidak dapat melakukan presensi dua kali pada sesi yang sama.
-Rekap sederhana. Asisten dapat melihat daftar praktikan yang sudah melakukan presensi beserta waktu kehadirannya. Praktikan dapat melihat catatan kehadirannya sendiri.
-Interaksi yang jelas. Gunakan form untuk menerima masukan atau pilihan pengguna, serta Modal atau Bottom Sheet untuk konfirmasi atau menampilkan informasi pendukung.
-Gunakan data lokal/dummy untuk identitas pengguna, jadwal, dan sesi. Pemilihan peran dan identitas dapat dilakukan melalui pilihan sederhana di dalam aplikasi. Perubahan data cukup dikelola menggunakan state selama aplikasi berjalan.
+- **Sprint 1 (Selesai — UI & Data Dummy)**: Antarmuka alur praktikum untuk praktikan dan asisten (jadwal, detail sesi, buka/tutup sesi, presensi, rekap kehadiran) menggunakan state lokal/dummy.
+- **Sprint 2 (Selesai — Firebase & Analisis Sentimen Lokal)**:
+  - **SRS-01**: Autentikasi Firebase (login, registrasi praktikan, logout, persistensi sesi) dan `NavigationGuard` berbasis peran.
+  - **SRS-02**: CRUD kelas, peserta, jadwal/sesi, serta presensi atomik (`runTransaction`, anti presensi ganda) secara real-time di Cloud Firestore.
+  - **SRS-03**: Pengajuan izin praktikan, pemeriksaan izin asisten (terima/tolak sekali), dan analisis sentimen lokal berbasis `ai/model-edom.json` + `ai/sentiment.js` (tanpa API eksternal; hasil AI tidak menentukan keputusan izin).
+  - **SRS-04**: Firebase Security Rules berbasis UID dan peran, mekanisme `retry()` + tombol **Coba lagi** untuk error koneksi, unit test lokal, dan skenario pengujian integrasi.
+- **Sprint 3 (Dalam Pengerjaan — Lokasi, Peta, & Notifikasi)**:
+  - Halaman presensi khusus terpisah dari detail sesi dengan validasi radius lokasi laboratorium.
+  - Pengelolaan lokasi & radius laboratorium oleh asisten, peta laboratorium interaktif, dan info aktivitas praktikum (sedang berlangsung & berikutnya) secara real-time.
+  - Push notification untuk perubahan status sesi (dibuka), perubahan jadwal, dan keputusan izin, serta penanganan kondisi izin/perangkat.
 
-Terapkan Flexbox untuk menyusun tata letak, navigasi untuk perpindahan halaman, dan state agar tampilan merespons tindakan pengguna. Perhatikan juga tampilan ketika daftar masih kosong, sesi belum dibuka, dan presensi sudah tercatat.
+---
 
-Hasil akhir: aplikasi dapat mendemonstrasikan alur asisten membuka sesi → praktikan melakukan presensi → asisten melihat rekap → asisten menutup sesi, dengan informasi yang konsisten pada kedua peran.
+## Teknologi
 
-## Daftar SRS
+### Terpasang saat ini (`package.json`)
+- **Expo**: `~57.0.31` (Expo Router `~57.0.29`, `expo-constants` `~57.0.22`, `expo-device` `~57.0.2`, `expo-linking` `~57.0.13`)
+- **React Native**: `0.86.3` / **React**: `19.2.3`
+- **TypeScript**: `~6.0.3` (path alias `@/*` → `./src/*`)
+- **Firebase JS SDK**: `^13.2.0` (Authentication & Cloud Firestore)
+- **Pengujian Rules**: `@firebase/rules-unit-testing` `^6.0.0` (devDependency)
 
-| Kode | Deskripsi | Acceptance Criteria |
-| :--- | :--- | :--- |
-| **SRS-01** | **Fondasi Aplikasi & Navigasi (Programmer 1)**<br>Membuat fondasi aplikasi, alur navigasi, validasi peran/identitas, dan komponen UI bersama. | - Sistem menampilkan halaman pemilihan peran (praktikan/asisten) dan identitas dummy<br>- Validasi peran & identitas berjalan sebelum masuk dashboard<br>- Navigasi antarhalaman & tombol kembali berfungsi tanpa error<br>- Komponen UI bersama (tombol, kartu, indikator status) tersedia dan konsisten |
-| **SRS-02** | **Antarmuka Praktikan (Programmer 2)**<br>Modul jadwal, detail sesi, presensi mandiri, dan pemantauan riwayat kehadiran praktikan. | - Dashboard & daftar jadwal praktikum dummy tampil dengan benar<br>- Tombol presensi aktif saat sesi dibuka dan menolak jika tertutup/ganda<br>- Waktu presensi tercatat otomatis dan riwayat kehadiran dapat dipantau<br>- Penanganan *empty state* tersedia saat jadwal/riwayat kosong |
-| **SRS-03** | **Antarmuka Asisten (Programmer 3)**<br>Modul pengelolaan status sesi (buka/tutup) dan rekapitulasi kehadiran praktikan. | - Dashboard asisten menampilkan daftar jadwal & detail sesi<br>- Modal/Bottom Sheet konfirmasi tersedia untuk membuka/menutup sesi<br>- Status sesi berubah secara *real-time* (DIBUKA/DITUTUP)<br>- Rekap dummy (nama, NIM, waktu hadir, jumlah total) ditampilkan dengan benar |
-| **SRS-04** | **Data Dummy, State & QA (Programmer 4)**<br>Penyediaan dataset lokal, fungsi bantu logika presensi, pengujian integrasi, dan dokumentasi bug. | - Dataset dummy (identitas, jadwal, sesi, presensi) tersedia dan siap digunakan<br>- Fungsi validasi sesi & pencegahan presensi ganda berjalan akurat<br>- Skenario pengujian integrasi lintas modul terdokumentasi<br>- Aplikasi dapat didemonstrasikan dengan mulus tanpa kendala error |
+### Direncanakan untuk Sprint 3 (belum terpasang)
+- `expo-location` (akses GPS & pemantauan lokasi perangkat)
+- `expo-notifications` (izin notifikasi, Expo Push Token, handler foreground & deep link)
+- `react-native-maps` (peta native Android/iOS; web menggunakan fallback non-peta)
+- `expo-dev-client` & `eas.json` (Android Development Build via EAS)
 
-# Sprint 2 — Data Dinamis dengan Firebase
+---
 
-Pada sprint sebelumnya, aplikasi telah memiliki antarmuka dan alur pengelolaan kegiatan praktikum menggunakan data lokal/dummy. Namun, data yang digunakan belum tersimpan secara permanen dan belum terhubung antar pengguna. Akibatnya, perubahan yang dilakukan oleh praktikan belum tentu terlihat oleh asisten, begitu pula sebaliknya.
+## Menjalankan Proyek
 
-Kini aplikasi perlu dikembangkan agar dapat digunakan oleh banyak pengguna dengan akun masing-masing. Praktikan dan asisten harus dapat mengakses data yang sama secara real-time, dengan informasi dan tindakan yang disesuaikan berdasarkan peran pengguna. Selain itu, praktikan yang berhalangan mengikuti kegiatan praktikum membutuhkan fasilitas pengajuan izin yang dapat diperiksa oleh asisten dengan bantuan Artificial Intelligence (AI).
+### Prasyarat
+- Node.js dan npm
+- Akun/akses proyek Firebase (`ppk-kel2-2026`, paket Spark)
+- Java (opsional, hanya diperlukan untuk menjalankan Firebase Firestore Emulator pada `npm run test:rules`)
 
-Pada sprint ini, kembangkan aplikasi React Native dari sprint sebelumnya dengan mengintegrasikan Firebase Authentication untuk pengelolaan akun, Cloud Firestore untuk penyimpanan dan sinkronisasi data, serta model AI yang disediakan pengajar melalui API. Tentukan sendiri penyesuaian antarmuka, struktur data, dan alur interaksi yang diperlukan untuk memenuhi kebutuhan tersebut.
+### Langkah Instalasi
+1. Pasang dependensi:
+   ```bash
+   npm install
+   ```
+2. Buat file `.env` di root proyek berdasarkan `.env.example` dengan nama variabel berikut (isi nilainya dari Firebase Console, **jangan pernah commit `.env`**):
+   - `EXPO_PUBLIC_FIREBASE_API_KEY`
+   - `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+   - `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - `EXPO_PUBLIC_FIREBASE_APP_ID`
+3. Jalankan server pengembangan:
+   ```bash
+   npx expo start
+   ```
+   Skrip lain yang tersedia di `package.json`: `npm run android`, `npm run ios`, `npm run web`.
 
-Kebutuhan yang harus dipenuhi:
+### Catatan Lingkungan Uji
+- **Sprint 1–2** dapat diuji menggunakan Expo Go.
+- **Sprint 3 membutuhkan Android Development Build** (dibangun via EAS) karena remote push notification pada `expo-notifications` tidak tersedia di Expo Go Android sejak Expo SDK 53, sekaligus untuk menguji `react-native-maps` dan GPS fisik.
+- **Web** hanya berfungsi sebagai fallback tanpa komponen peta (`react-native-maps` tidak mendukung web).
+- Proyek mengaktifkan `experiments.typedRoutes` di `app.json`. Setelah menambah file rute baru di `src/app/`, jalankan `npx expo start` sebentar agar tipe rute di `.expo/types` ter-generate sebelum menjalankan `npx tsc --noEmit`.
 
-1. Autentikasi pengguna. Pengguna dapat melakukan registrasi, login, dan logout menggunakan Firebase Authentication. Setiap akun memiliki identitas dan peran sebagai praktikan atau asisten. Aplikasi harus menampilkan informasi dan menyediakan tindakan sesuai peran pengguna.
+---
 
-2. Pengelolaan data praktikum. Data kelas, peserta, jadwal, dan sesi praktikum disimpan menggunakan Cloud Firestore. Asisten dapat melakukan operasi tambah, lihat, ubah, dan hapus (CRUD) terhadap data praktikum sesuai kebutuhan aplikasi. Praktikan dapat melihat jadwal dan informasi sesi yang berkaitan dengan dirinya.
+## Struktur Folder
 
-3. Presensi terintegrasi. Praktikan dapat melakukan presensi ketika sesi dibuka oleh asisten. Data kehadiran disimpan di Firestore berdasarkan identitas praktikan dan sesi yang diikuti. Praktikan tidak dapat melakukan presensi lebih dari satu kali pada sesi yang sama.
+```text
+ppk-1-mobile/
+├── ai/                 # Model sentimen EDOM lokal (model-edom.json, sentiment.js)
+├── docs/
+│   ├── srs/            # Dokumen SRS Sprint 1 dan Sprint 2
+│   └── pengujian/      # Panduan & laporan hasil pengujian SRS-04
+├── src/
+│   ├── app/            # Rute Expo Router: (auth), praktikan, asisten, sesi, izin
+│   ├── components/     # Komponen UI bersama, form, presensi, dan izin
+│   ├── config/         # Inisialisasi Firebase Auth & Cloud Firestore
+│   ├── constants/      # Konfigurasi tema dan spasi
+│   ├── context/        # AuthContext (sesi login & profil pengguna)
+│   ├── data/           # Tipe model Firestore, tipe izin, dan state pendukung
+│   ├── hooks/          # Hook listener real-time Firestore (use-praktikum, use-izin)
+│   ├── lib/            # Validasi input, pemetaan error, format tanggal, aturan izin
+│   └── services/       # Lapisan akses Firebase Auth, Firestore, dan sentimen lokal
+├── tests/              # Unit test AI, validasi input, dan Firestore Security Rules
+├── AGENTS.md           # Pedoman pengembangan Expo/React Native untuk agent
+├── app.json            # Konfigurasi Expo (package Android, google-services.json, EAS)
+├── firebase.json       # Konfigurasi rules, indexes, dan emulator Firestore
+├── firestore.rules     # Aturan keamanan Cloud Firestore
+└── firestore.indexes.json
+```
 
-4. Sinkronisasi data real-time. Perubahan status sesi, pencatatan presensi, dan rekap kehadiran harus dapat terlihat oleh pengguna terkait tanpa perlu menjalankan ulang aplikasi. Data yang tersimpan harus tetap tersedia setelah aplikasi ditutup dan dibuka kembali.
+---
 
-5. Pengajuan izin. Praktikan dapat mengajukan izin untuk sesi tertentu dengan mengisi alasan ketidakhadiran. Setiap pengajuan disimpan di Firestore dan memiliki status yang dapat dipantau oleh praktikan.
+## Data dan Keamanan
 
-6. Integrasi AI. Aplikasi mengirimkan alasan izin ke API model AI yang disediakan pengajar untuk mendapatkan prediksi kategori alasan. Hasil klasifikasi ditampilkan sebagai informasi pendukung dan disimpan bersama pengajuan. Model AI tidak menentukan apakah izin diterima atau ditolak.
+### Koleksi Cloud Firestore Saat Ini
+- `users/{uid}`: profil pengguna (`uid`, `email`, `nama`, `role`, `nim`/`kelas`/`nip`, `createdAt`, `updatedAt`). Registrasi mandiri dibatasi hanya untuk `role: 'praktikan'`.
+- `kelas/{kelasId}` & subkoleksi `kelas/{kelasId}/peserta/{uid}`: data kelas, `pesertaUids`, dan daftar peserta.
+- `sesi/{sesiId}` & subkoleksi `sesi/{sesiId}/presensi/{uid}`: jadwal/status sesi (`belum_dibuka`, `dibuka`, `ditutup`) dan catatan presensi dengan ID dokumen `= uid` (anti presensi ganda).
+- `izin/{sesiId}_{uid}`: pengajuan izin praktikan, hasil sentimen lokal (`model-edom`), dan keputusan asisten sekali jalan (`menunggu` → `diterima`/`ditolak`).
 
-7. Pemeriksaan izin. Asisten dapat melihat daftar pengajuan izin beserta alasan dan hasil klasifikasinya, kemudian menerima atau menolak pengajuan. Keputusan tersebut tersimpan di Firestore dan dapat dilihat oleh praktikan.
+### Perluasan Data Direncanakan (Sprint 3)
+- Koleksi baru `laboratorium/{labId}` (nama, kode, deskripsi, koordinat `latitude`/`longitude`, `radiusMeter`).
+- Field `laboratoriumId` pada dokumen `sesi/{sesiId}`.
+- Field metadata lokasi (`laboratoriumId`, koordinat, jarak, akurasi) pada `sesi/{sesiId}/presensi/{uid}`.
+- Field `expoPushToken` pada `users/{uid}`.
 
-8. Validasi dan keamanan data. Aplikasi harus menangani input yang tidak valid, kegagalan autentikasi, serta kesalahan komunikasi dengan Firestore atau API AI. Akses dan perubahan data harus dibatasi sesuai identitas serta peran pengguna, termasuk melalui Firebase Security Rules.
+### Security Rules & Skrip Firebase
+Aturan keamanan dikelola di [firestore.rules](firestore.rules) dan diverifikasi memakai emulator lokal:
+```bash
+npm run test:rules     # Menjalankan tests/rules di Firestore Emulator (port 8080)
+npm run deploy:rules   # Deploy firestore.rules ke project ppk-kel2-2026
+```
 
-Gunakan Firebase Authentication sebagai sumber identitas pengguna dan Cloud Firestore sebagai penyimpanan utama data aplikasi. Terapkan operasi CRUD, real-time listener, dan pengelolaan state agar perubahan data dapat tercermin secara konsisten pada antarmuka.
+---
 
-Perhatikan juga kondisi ketika pengguna belum login, data masih dimuat, daftar data kosong, koneksi mengalami gangguan, atau layanan AI tidak memberikan respons. Pengajuan izin tidak boleh otomatis diterima atau ditolak berdasarkan hasil prediksi model.
+## Tim dan Pembagian Sprint 3
 
-Hasil akhir: aplikasi dapat mendemonstrasikan dua alur utama:
+Koordinasi proyek dipimpin oleh **Project Manager**.
 
-- Asisten login → membuka sesi → praktikan login dan melakukan presensi → data tersimpan di Firestore → asisten melihat rekap kehadiran secara real-time → asisten menutup sesi.
-- Praktikan login → mengajukan izin → AI mengklasifikasikan alasan → asisten memeriksa dan memberikan keputusan → praktikan melihat status pengajuannya.
+| Programmer | GitHub | SRS Sprint 3 | Fokus |
+| --- | --- | --- | --- |
+| P1 | husein avicenna | SRS-01 | Fondasi native (paket, `app.json`, `eas.json`, APK development), push notification sisi klien (izin, token di `users/{uid}`, deep link), komponen kondisi perangkat (`PermissionNotice`) |
+| P2 | biyaniandarisky | SRS-02 | Presensi berbasis lokasi: `geo.ts`, `use-location.ts`, halaman `/presensi/[sesiId]`, validasi radius di transaksi presensi, pemilih lab di form sesi |
+| P3 | [ovisucira-afk](https://github.com/ovisucira-afk) | SRS-03 | Laboratorium (koleksi + CRUD asisten), halaman Maps (marker lab + posisi pengguna), info aktivitas lab |
+| P4 | galviyy (Galvin) | SRS-04 | Security Rules (laboratorium, presensi lokasi, token), `lab-activity.ts` (logika "sedang berlangsung / berikutnya"), `push-sender.ts` + pemasangan di tiga kejadian (sesi dibuka, jadwal berubah, izin diputuskan), uji E2E |
 
-Seluruh perubahan data harus tersimpan secara persisten, konsisten antar pengguna, dan hanya dapat diakses atau dimodifikasi sesuai kewenangan masing-masing peran.
+### Keputusan Teknis Sprint 3
+- **Paket Firebase**: tetap **Spark**; pengiriman push dilakukan dari perangkat asisten lewat Expo Push API secara *best-effort* (tanpa Cloud Functions).
+- **Platform demo**: perangkat fisik **Android** dengan EAS Development Build; web hanya sebagai fallback tanpa peta.
+- **Ruang lingkup**: presensi QR dikeluarkan dari scope inti (menjadi stretch goal).
+- **Konfigurasi domain**: radius default laboratorium **100 m**; satu `expoPushToken` per pengguna; tab praktikan menjadi **4 tab (+Peta)** dan asisten **5 tab (+Peta)**.
+- **Kredensial & rahasia**: Google Maps API key, akses EAS, dan kunci FCM dipegang oleh **P1**; tidak ada rahasia yang boleh masuk ke repositori.
+- **Tenggat sprint**: ditentukan PM.
 
-## Daftar SRS
+### Status Kemajuan Sprint 3
+- [ ] **SRS-01 (P1)**: Fondasi native, `eas.json`, APK development, push client & `PermissionNotice`
+- [ ] **SRS-02 (P2)**: Utilitas lokasi, halaman `/presensi/[sesiId]`, validasi radius, pemilih lab di form sesi
+- [ ] **SRS-03 (P3)**: Koleksi & CRUD laboratorium, halaman Maps (native + fallback web), tampilan aktivitas lab
+- [ ] **SRS-04 (P4)**: Security Rules Sprint 3, `lab-activity.ts`, `push-sender.ts` + wiring 3 event, pengujian E2E
 
-| Kode | Deskripsi | Acceptance Criteria |
-| :--- | :--- | :--- |
-| **SRS-01** | **Autentikasi & Manajemen Pengguna (Programmer 1)**<br>Pengembangan sistem autentikasi Firebase, manajemen profil Cloud Firestore, dan navigasi berbasis *role* (praktikan/asisten). | - Pengguna dapat melakukan registrasi, login (Firebase Auth), dan logout dengan mulus<br>- Sistem menyimpan profil dan role (`praktikan`/`asisten`) ke Cloud Firestore dengan UID unik<br>- Sesi login dipertahankan otomatis dan halaman dibatasi aksesnya sesuai peran pengguna<br>- Pesan kesalahan interaktif muncul jika proses autentikasi gagal |
-| **SRS-02** | **Pengelolaan Data Praktikum & Presensi (Programmer 2)**<br>Implementasi CRUD kelas, jadwal, sesi, presensi *real-time*, dan pencegahan presensi ganda berbasis Firestore. | - Asisten dapat mengelola data kelas, peserta, jadwal, dan sesi praktikum secara lengkap<br>- Praktikan dapat melihat jadwal dan melakukan presensi saat sesi berstatus DIBUKA<br>- Sistem mencegah presensi ganda menggunakan mekanisme penulisan atomik/transaksi<br>- Rekap kehadiran dan perubahan data diperbarui secara *real-time* via Firestore listener |
-| **SRS-03** | **Pengajuan Izin & Analisis Sentimen AI Lokal (Programmer 3)**<br>Pengembangan form pengajuan izin praktikan dan integrasi model analisis sentimen EDOM secara lokal (JavaScript) tanpa API eksternal, serta panel pemeriksaan oleh asisten. | - Praktikan dapat mengisi dan mengirimkan pengajuan izin dengan validasi alasan tidak kosong<br>- Sistem memuat model lokal dari `ai/model-edom.json` dan membuat classifier via `sentiment.js` satu kali di luar komponen<br>- Teks alasan izin dianalisis secara lokal (tanpa koneksi jaringan/API eksternal) dan hasilnya (`prediction.label`) ditampilkan pada layar<br>- Pengajuan beserta hasil analisis sentimen tersimpan permanen ke Firestore<br>- Asisten dapat melihat rekap alasan/analisis AI serta memberikan keputusan (Diterima/Ditolak), dan praktikan dapat memantau status keputusannya |
-| **SRS-04** | **Integrasi Sistem, Keamanan & QA (Programmer 4)**<br>Penyusunan Firebase Security Rules, integrasi antar-modul, penanganan error/loading, dan pengujian akses berbasis peran. | - Firebase Security Rules aktif dan membatasi akses data secara ketat berdasarkan UID & peran<br>- Aplikasi menangani kondisi *loading*, *empty state*, koneksi internet gagal, dan unauthenticated user<br>- Pengujian konsistensi data antarperangkat dan simulasi *security rules* berjalan sukses<br>- Seluruh alur utama (presensi & izin) berhasil diintegrasikan dan didemonstrasikan tanpa kendala |
+---
+
+## Alur Kerja Kontribusi
+
+- **Penamaan branch**: mengikuti pola `srs-NN-deskripsi-kebab-case` (Sprint 3 memakai awalan `sprint3-`, mis. `sprint3-01-push-client-token`). Semua perubahan digabungkan lewat Pull Request ke `main`.
+- **Kepemilikan file**: setiap file/folder memiliki satu pemilik untuk meminimalkan konflik. Titik panas konflik (`package.json`, `package-lock.json`, `app.json`, `eas.json`, `src/app/_layout.tsx`, `src/data/models.ts`, `src/services/praktikum.ts`, `firestore.rules`) hanya boleh diubah oleh pemiliknya sesuai fase.
+- **Aturan dependensi**: hanya **P1** yang menambahkan/mengubah paket npm (`npx expo install`) pada PR fondasi awal; anggota lain melakukan `npm install` setelah PR tersebut masuk ke `main`.
+- **Urutan merge Sprint 3**: Fondasi native (P1) → P1 (push client) & utilitas lokasi P2 → P2 (presensi lokasi) & P3 (lab + Maps) → P4 (Security Rules, wiring event push, pengujian E2E).
+- **Definition of Done**: `npx tsc --noEmit` menghasilkan 0 error, `npx expo lint` tidak menambah error baru di luar baseline, fitur Sprint 2 tetap berjalan normal, dan tidak ada rahasia/kredensial dalam commit.
+
+---
+
+## Pengujian
+
+```bash
+npx tsc --noEmit       # Typecheck TypeScript (baseline: 0 error)
+npx expo lint          # Lint proyek
+npm test               # Unit test AI sentimen lokal dan validasi input (tests/ai, tests/lib)
+npm run test:rules     # Unit test Firestore Security Rules di emulator lokal
+```
+
+**Catatan baseline lint**: `npx expo lint` saat ini melaporkan **251 error** (0 warning) yang seluruhnya berasal dari aturan `import/no-unresolved` untuk path alias `@/*` (termasuk 7 error dari file lokal untracked jika ada). Pengembang tidak boleh menambah error lint jenis lain.
+
+Panduan dan laporan pengujian sebelumnya tersedia di:
+- [Panduan & Skenario Pengujian SRS-04](docs/pengujian/SRS-04-integrasi-keamanan.md)
+- [Laporan Hasil Pengujian SRS-04](docs/pengujian/hasil-pengujian.md)
+
+---
+
+## Dokumentasi
+
+Dokumen SRS yang tersedia di repositori:
+- Sprint 1: [SRS-01 Fondasi Aplikasi](docs/srs/SRS-01-fondasi-aplikasi.md), [SRS-02 Jadwal & Detail Sesi](docs/srs/SRS-02-jadwal-detail-sesi.md), [SRS-03 Sesi & Rekap Asisten](docs/srs/SRS-03-sesi-rekap-asisten.md), [SRS-04 Presensi Praktikan](docs/srs/SRS-04-presensi-praktikan.md)
+- Sprint 2: [SRS-01 Autentikasi & Manajemen Pengguna](docs/srs/SRS-01-autentikasi-manajemen-pengguna.md)
+- Sprint 3: SRS-01 s.d. SRS-04 Sprint 3 (akan ditambahkan)
+- Pedoman pengembangan Expo: [AGENTS.md](AGENTS.md)
+
+---
+
+## Lisensi
+
+Proyek ini menggunakan lisensi MIT. Lihat berkas [LICENSE](LICENSE) untuk rincian lengkap.
