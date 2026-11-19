@@ -52,3 +52,17 @@ export async function updateUserProfile(
   });
 }
 
+/**
+ * Menyimpan atau menghapus (set null) Expo push token pada dokumen users/{uid} (S3-01.3, S3-01.4)
+ */
+export async function updateUserPushToken(
+  uid: string,
+  expoPushToken: string | null
+): Promise<void> {
+  const now = new Date().toISOString();
+  await updateUserProfile(uid, {
+    expoPushToken,
+    pushTokenUpdatedAt: now,
+  });
+}
+

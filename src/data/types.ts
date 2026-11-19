@@ -8,9 +8,30 @@ export type UserProfile = {
   nim?: string;
   kelas?: 'A' | 'B';
   nip?: string;
+  expoPushToken?: string | null;
+  pushTokenUpdatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 };
+
+export type PushNotificationEvent = 'sesi_dibuka' | 'jadwal_berubah' | 'izin_diputuskan';
+
+export type PushNotificationPayload =
+  | {
+      event: 'sesi_dibuka';
+      sesiId: string;
+      kelasId?: string;
+    }
+  | {
+      event: 'jadwal_berubah';
+      sesiId: string;
+      kelasId?: string;
+    }
+  | {
+      event: 'izin_diputuskan';
+      izinId: string;
+      status?: string;
+    };
 
 export type RegisterPayload = {
   email: string;
