@@ -18,16 +18,61 @@ service cloud.firestore {
       return signedIn()
         && request.auth.uid in get(/databases/$(database)/documents/kelas/$(kelasId)).data.pesertaUids;
     }
+    function sesiDok(sesiId) {
+      return get(/databases/$(database)/documents/sesi/$(sesiId)).data;
+    }
+    function labDok(labId) {
+      return get(/databases/$(database)/documents/laboratorium/$(labId)).data;
+    }
+    function dalamRadiusPresensi(sesiId, latitude, longitude) {
+      let sesi = sesiDok(sesiId);
+      let lab = labDok(sesi.laboratoriumId);
+      let selisihLatitude = (latitude - lab.latitude) * 111320;
+      let selisihLongitude = (longitude - lab.longitude) * 111320;
+      return math.pow(selisihLatitude, 2) + math.pow(selisihLongitude, 2)
+        <= math.pow(lab.radiusMeter, 2);
+    }
+    function labValid(data) {
+      return data.nama is string && data.nama.size() >= 1 && data.nama.size() <= 100
+        && data.kode is string && data.kode.size() <= 20
+        && data.deskripsi is string && data.deskripsi.size() <= 500
+        && data.latitude is number && data.latitude >= -90 && data.latitude <= 90
+        && data.longitude is number && data.longitude >= -180 && data.longitude <= 180
+        && data.radiusMeter is number && data.radiusMeter >= 10 && data.radiusMeter <= 500;
+    }
+    function tokenPushValid(data) {
+      return !('expoPushToken' in data)
+        || data.expoPushToken == null
+        || (data.expoPushToken is string
+            && data.expoPushToken.matches('^(ExponentPushToken|ExpoPushToken)\\[[A-Za-z0-9_-]+\\]$'));
+    }
+    function tokenPushWaktuValid(data) {
+      return !('pushTokenUpdatedAt' in data) || data.pushTokenUpdatedAt is string;
+    }
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAsisten());
 
       allow create: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid && request.resource.data.role == 'praktikan';
 
-      allow update: if signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role
+        && tokenPushValid(request.resource.data)
+        && tokenPushWaktuValid(request.resource.data);
 
       allow update: if isAsisten() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) && request.resource.data.role in ['praktikan', 'asisten'];
     }
 
+
+    match /laboratorium/{labId} {
+      allow read: if signedIn();
+      allow create: if isAsisten()
+        && request.resource.data.keys().hasOnly(['nama', 'kode', 'deskripsi', 'latitude', 'longitude', 'radiusMeter', 'updatedAt'])
+        && labValid(request.resource.data);
+      allow update: if isAsisten()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nama', 'kode', 'deskripsi', 'latitude', 'longitude', 'radiusMeter', 'updatedAt'])
+        && labValid(request.resource.data);
+      allow delete: if isAsisten();
+    }
 
     match /kelas/{kelasId} {
       allow read: if isAsisten() || (signedIn() && request.auth.uid in resource.data.pesertaUids);
@@ -46,12 +91,19 @@ service cloud.firestore {
       match /presensi/{uid} {
         allow read: if isAsisten() || (signedIn() && request.auth.uid == uid);
         allow create: if signedIn() && request.auth.uid == uid
-          && get(/databases/$(database)/documents/sesi/$(sesiId)).data.status == 'dibuka'
-          && isPeserta(get(/databases/$(database)/documents/sesi/$(sesiId)).data.kelasId)
-          && request.resource.data.keys().hasOnly(['uid', 'nama', 'nim', 'kelasId', 'waktu'])
+          && sesiDok(sesiId).status == 'dibuka'
+          && isPeserta(sesiDok(sesiId).kelasId)
+          && sesiDok(sesiId).laboratoriumId is string
+          && request.resource.data.keys().hasOnly(['uid', 'nama', 'nim', 'kelasId', 'waktu', 'laboratoriumId', 'latitude', 'longitude', 'jarakMeter', 'akurasiMeter'])
           && request.resource.data.uid == uid
-          && request.resource.data.kelasId == get(/databases/$(database)/documents/sesi/$(sesiId)).data.kelasId
-          && request.resource.data.waktu == request.time;
+          && request.resource.data.kelasId == sesiDok(sesiId).kelasId
+          && request.resource.data.waktu == request.time
+          && request.resource.data.laboratoriumId == sesiDok(sesiId).laboratoriumId
+          && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+          && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+          && request.resource.data.jarakMeter is number && request.resource.data.jarakMeter >= 0
+          && request.resource.data.akurasiMeter is number && request.resource.data.akurasiMeter >= 0
+          && dalamRadiusPresensi(sesiId, request.resource.data.latitude, request.resource.data.longitude);
         allow update: if false;
         allow delete: if isAsisten();
       }

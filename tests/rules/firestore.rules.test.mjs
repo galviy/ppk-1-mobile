@@ -26,6 +26,31 @@ let testEnv;
 const dbAnon = () => testEnv.unauthenticatedContext().firestore();
 const dbAs = (uid) => testEnv.authenticatedContext(uid).firestore();
 
+const validPresensi = (overrides = {}) => ({
+  uid: 'praktikan1',
+  nama: 'Praktikan Satu',
+  nim: '001',
+  kelasId: 'kelasA',
+  waktu: serverTimestamp(),
+  laboratoriumId: 'lab1',
+  latitude: -6.9,
+  longitude: 107.6,
+  jarakMeter: 5,
+  akurasiMeter: 10,
+  ...overrides,
+});
+
+const validLab = (overrides = {}) => ({
+  nama: 'Lab Baru',
+  kode: 'LAB2',
+  deskripsi: 'Laboratorium baru',
+  latitude: -6.9,
+  longitude: 107.6,
+  radiusMeter: 100,
+  updatedAt: serverTimestamp(),
+  ...overrides,
+});
+
 const validIzin = (overrides = {}) => ({
   uid: 'praktikan1',
   nama: 'Praktikan Satu',
@@ -83,14 +108,24 @@ beforeEach(async () => {
       keterangan: 'Kelas uji',
       pesertaUids: ['praktikan1'],
     });
+    await setDoc(doc(db, 'laboratorium', 'lab1'), {
+      nama: 'Lab Komputer',
+      kode: 'LAB1',
+      deskripsi: 'Laboratorium uji',
+      latitude: -6.9,
+      longitude: 107.6,
+      radiusMeter: 100,
+      updatedAt: new Date(),
+    });
     await setDoc(doc(db, 'sesi', 'sesi1'), {
       kelasId: 'kelasA',
       namaPraktikum: 'Praktikum Uji',
       tanggal: '2026-11-20',
       jamMulai: '08:00',
       jamSelesai: '10:00',
-      ruang: 'Lab',
+      ruang: 'Lab Komputer',
       status: 'dibuka',
+      laboratoriumId: 'lab1',
     });
     await setDoc(doc(db, 'sesi', 'sesiTutup'), {
       kelasId: 'kelasA',
@@ -98,8 +133,18 @@ beforeEach(async () => {
       tanggal: '2026-11-21',
       jamMulai: '08:00',
       jamSelesai: '10:00',
-      ruang: 'Lab',
+      ruang: 'Lab Komputer',
       status: 'ditutup',
+      laboratoriumId: 'lab1',
+    });
+    await setDoc(doc(db, 'sesi', 'sesiLama'), {
+      kelasId: 'kelasA',
+      namaPraktikum: 'Praktikum Lama',
+      tanggal: '2026-11-22',
+      jamMulai: '08:00',
+      jamSelesai: '10:00',
+      ruang: 'Lab Lama',
+      status: 'dibuka',
     });
   });
 });
@@ -157,6 +202,42 @@ describe('FR-04.3 / FR-04.4 profil dan peran', () => {
   it('asisten dapat mempromosikan praktikan menjadi asisten', async () => {
     await assertSucceeds(updateDoc(doc(dbAs('asisten1'), 'users', 'praktikan2'), { role: 'asisten' }));
   });
+
+  it('praktikan dapat menyimpan token push dengan format valid', async () => {
+    await assertSucceeds(
+      updateDoc(doc(dbAs('praktikan1'), 'users', 'praktikan1'), {
+        expoPushToken: 'ExponentPushToken[abc_DEF-123]',
+        pushTokenUpdatedAt: '2026-11-19T00:00:00.000Z',
+      }),
+    );
+  });
+
+  it('praktikan dapat menghapus token push saat logout', async () => {
+    const db = dbAs('praktikan1');
+    await assertSucceeds(
+      updateDoc(doc(db, 'users', 'praktikan1'), {
+        expoPushToken: 'ExpoPushToken[abc]',
+      }),
+    );
+    await assertSucceeds(updateDoc(doc(db, 'users', 'praktikan1'), { expoPushToken: null }));
+  });
+
+  it('token push dengan format salah ditolak', async () => {
+    await assertFails(
+      updateDoc(doc(dbAs('praktikan1'), 'users', 'praktikan1'), {
+        expoPushToken: 'bukan-token',
+      }),
+    );
+  });
+
+  it('menyimpan token push tidak boleh mengubah peran', async () => {
+    await assertFails(
+      updateDoc(doc(dbAs('praktikan1'), 'users', 'praktikan1'), {
+        role: 'asisten',
+        expoPushToken: 'ExponentPushToken[abc]',
+      }),
+    );
+  });
 });
 
 describe('FR-04.4 pengelolaan data praktikum hanya asisten', () => {
@@ -212,30 +293,16 @@ describe('FR-04.5 akses praktikan sesuai identitas', () => {
   });
 });
 
-describe('FR-04.14 alur presensi', () => {
-  it('praktikan dapat presensi pada sesi yang dibuka', async () => {
+describe('FR-04.14 alur presensi berbasis lokasi', () => {
+  it('praktikan dapat presensi di dalam radius pada sesi yang dibuka', async () => {
     await assertSucceeds(
-      setDoc(doc(dbAs('praktikan1'), 'sesi', 'sesi1', 'presensi', 'praktikan1'), {
-        uid: 'praktikan1',
-        nama: 'Praktikan Satu',
-        nim: '001',
-        kelasId: 'kelasA',
-        waktu: serverTimestamp(),
-      }),
+      setDoc(doc(dbAs('praktikan1'), 'sesi', 'sesi1', 'presensi', 'praktikan1'), validPresensi()),
     );
   });
 
   it('presensi ganda ditolak karena update tidak diizinkan', async () => {
     const db = dbAs('praktikan1');
-    await assertSucceeds(
-      setDoc(doc(db, 'sesi', 'sesi1', 'presensi', 'praktikan1'), {
-        uid: 'praktikan1',
-        nama: 'Praktikan Satu',
-        nim: '001',
-        kelasId: 'kelasA',
-        waktu: serverTimestamp(),
-      }),
-    );
+    await assertSucceeds(setDoc(doc(db, 'sesi', 'sesi1', 'presensi', 'praktikan1'), validPresensi()));
     await assertFails(
       updateDoc(doc(db, 'sesi', 'sesi1', 'presensi', 'praktikan1'), { nama: 'Diubah' }),
     );
@@ -243,26 +310,97 @@ describe('FR-04.14 alur presensi', () => {
 
   it('presensi pada sesi ditutup ditolak', async () => {
     await assertFails(
-      setDoc(doc(dbAs('praktikan1'), 'sesi', 'sesiTutup', 'presensi', 'praktikan1'), {
-        uid: 'praktikan1',
-        nama: 'Praktikan Satu',
-        nim: '001',
-        kelasId: 'kelasA',
-        waktu: serverTimestamp(),
-      }),
+      setDoc(doc(dbAs('praktikan1'), 'sesi', 'sesiTutup', 'presensi', 'praktikan1'), validPresensi()),
     );
   });
 
   it('bukan peserta kelas tidak dapat presensi', async () => {
     await assertFails(
-      setDoc(doc(dbAs('praktikan2'), 'sesi', 'sesi1', 'presensi', 'praktikan2'), {
-        uid: 'praktikan2',
-        nama: 'Praktikan Dua',
-        nim: '002',
+      setDoc(
+        doc(dbAs('praktikan2'), 'sesi', 'sesi1', 'presensi', 'praktikan2'),
+        validPresensi({ uid: 'praktikan2', nama: 'Praktikan Dua', nim: '002' }),
+      ),
+    );
+  });
+
+  it('presensi di luar radius laboratorium ditolak', async () => {
+    await assertFails(
+      setDoc(
+        doc(dbAs('praktikan1'), 'sesi', 'sesi1', 'presensi', 'praktikan1'),
+        validPresensi({ latitude: -6.91, longitude: 107.61, jarakMeter: 1500 }),
+      ),
+    );
+  });
+
+  it('presensi dengan laboratoriumId berbeda dari sesi ditolak', async () => {
+    await assertFails(
+      setDoc(
+        doc(dbAs('praktikan1'), 'sesi', 'sesi1', 'presensi', 'praktikan1'),
+        validPresensi({ laboratoriumId: 'lab2' }),
+      ),
+    );
+  });
+
+  it('presensi pada sesi lama tanpa laboratoriumId ditolak', async () => {
+    await assertFails(
+      setDoc(
+        doc(dbAs('praktikan1'), 'sesi', 'sesiLama', 'presensi', 'praktikan1'),
+        validPresensi(),
+      ),
+    );
+  });
+
+  it('presensi tanpa data lokasi lengkap ditolak', async () => {
+    await assertFails(
+      setDoc(doc(dbAs('praktikan1'), 'sesi', 'sesi1', 'presensi', 'praktikan1'), {
+        uid: 'praktikan1',
+        nama: 'Praktikan Satu',
+        nim: '001',
         kelasId: 'kelasA',
         waktu: serverTimestamp(),
+        laboratoriumId: 'lab1',
+        latitude: -6.9,
+        longitude: 107.6,
       }),
     );
+  });
+
+  it('presensi dengan koordinat di luar rentang ditolak', async () => {
+    await assertFails(
+      setDoc(
+        doc(dbAs('praktikan1'), 'sesi', 'sesi1', 'presensi', 'praktikan1'),
+        validPresensi({ latitude: -91 }),
+      ),
+    );
+  });
+});
+
+describe('FR-04.1 / FR-04.2 laboratorium dan peta', () => {
+  it('pengguna login dapat membaca laboratorium, tanpa login ditolak', async () => {
+    await assertSucceeds(getDoc(doc(dbAs('praktikan1'), 'laboratorium', 'lab1')));
+    await assertFails(getDoc(doc(dbAnon(), 'laboratorium', 'lab1')));
+  });
+
+  it('asisten dapat menambah, mengubah, dan menghapus laboratorium', async () => {
+    const db = dbAs('asisten1');
+    await assertSucceeds(setDoc(doc(db, 'laboratorium', 'lab2'), validLab()));
+    await assertSucceeds(updateDoc(doc(db, 'laboratorium', 'lab2'), { radiusMeter: 150 }));
+    await assertSucceeds(deleteDoc(doc(db, 'laboratorium', 'lab2')));
+  });
+
+  it('praktikan tidak dapat menulis laboratorium', async () => {
+    const db = dbAs('praktikan1');
+    await assertFails(setDoc(doc(db, 'laboratorium', 'lab2'), validLab()));
+    await assertFails(updateDoc(doc(db, 'laboratorium', 'lab1'), { radiusMeter: 150 }));
+    await assertFails(deleteDoc(doc(db, 'laboratorium', 'lab1')));
+  });
+
+  it('menolak koordinat dan radius laboratorium di luar rentang', async () => {
+    const db = dbAs('asisten1');
+    await assertFails(setDoc(doc(db, 'laboratorium', 'lab2'), validLab({ latitude: -91 })));
+    await assertFails(setDoc(doc(db, 'laboratorium', 'lab3'), validLab({ longitude: 181 })));
+    await assertFails(setDoc(doc(db, 'laboratorium', 'lab4'), validLab({ radiusMeter: 9 })));
+    await assertFails(setDoc(doc(db, 'laboratorium', 'lab5'), validLab({ radiusMeter: 501 })));
   });
 });
 
