@@ -26,7 +26,7 @@ const KOSONG = { kelas: [] as Kelas[], sesi: [] as Sesi[], peserta: [] as Pesert
  * `subscribe` harus stabil (modul-level atau useMemo); null = belum perlu berlangganan.
  * `retry` memaksa listener dibuat ulang setelah error koneksi/permission (FR-04.12).
  */
-function useLive<T>(subscribe: Subscribe<T> | null, initial: T): Live<T> {
+export function useLive<T>(subscribe: Subscribe<T> | null, initial: T): Live<T> {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<{
     src: unknown;
