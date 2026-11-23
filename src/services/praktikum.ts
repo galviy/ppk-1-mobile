@@ -30,6 +30,7 @@ import type {
 } from '@/data/models';
 import { db } from '@/config/firebase';
 import { AppError, DuplikatError, cekKelas, cekPeserta, cekSesi } from '@/lib/validasi';
+import { evaluasiLokasi, koordinatValid, type LokasiInput } from '@/lib/geo';
 
 export type OnData<T> = (data: T) => void;
 export type OnError = (e: unknown) => void;
@@ -52,6 +53,7 @@ const mapSesi = (d: DocumentSnapshot<DocumentData>): Sesi => ({
   jamSelesai: d.get('jamSelesai') ?? '',
   ruang: d.get('ruang') ?? '',
   status: d.get('status') ?? 'belum_dibuka',
+  laboratoriumId: d.get('laboratoriumId') ?? undefined,
 });
 
 const mapPresensi = (d: DocumentSnapshot<DocumentData>): Presensi => ({
@@ -61,6 +63,11 @@ const mapPresensi = (d: DocumentSnapshot<DocumentData>): Presensi => ({
   kelasId: d.get('kelasId') ?? '',
   // 'estimate' agar tulisan lokal yang menunggu timestamp server tetap tampil
   waktu: d.get('waktu', { serverTimestamps: 'estimate' })?.toDate?.() ?? null,
+  laboratoriumId: d.get('laboratoriumId') ?? undefined,
+  latitude: d.get('latitude') ?? undefined,
+  longitude: d.get('longitude') ?? undefined,
+  jarakMeter: d.get('jarakMeter') ?? undefined,
+  akurasiMeter: d.get('akurasiMeter') ?? undefined,
 });
 
 const urutSesi = (a: Sesi, b: Sesi) =>
@@ -246,6 +253,7 @@ const bersihkan = (i: InputSesi): InputSesi => ({
   jamMulai: i.jamMulai.trim(),
   jamSelesai: i.jamSelesai.trim(),
   ruang: i.ruang.trim(),
+  laboratoriumId: i.laboratoriumId.trim(),
 });
 
 export async function tambahSesi(i: InputSesi) {
@@ -278,24 +286,82 @@ export async function setStatusSesi(id: string, status: StatusSesi) {
 
 // ---------- presensi (atomik) ----------
 /**
- * Dokumen presensi memakai UID praktikan sebagai ID, dan penulisan dilakukan di dalam transaksi:
- * sesi harus 'dibuka' dan dokumen belum ada. Security Rules menolak create di atas dokumen
- * yang sudah ada, sehingga presensi ganda tertolak meski dua perangkat menulis bersamaan.
+ * Presensi berbasis lokasi. Validasi otoritatif dilakukan ulang di transaksi Firestore;
+ * ID dokumen presensi tetap UID agar satu praktikan hanya dapat presensi sekali per sesi.
  */
-export async function catatPresensi(sesiId: string, profil: Profil) {
+export async function catatPresensi(
+  sesiId: string,
+  profil: Profil,
+  lokasi: LokasiInput,
+) {
+  if (!koordinatValid(lokasi)) throw new AppError('Koordinat lokasi tidak valid.');
+  if (lokasi.mocked === true) throw new AppError('Lokasi palsu (mock location) terdeteksi.');
+  if (
+    lokasi.akurasiMeter === null ||
+    !Number.isFinite(lokasi.akurasiMeter) ||
+    lokasi.akurasiMeter < 0 ||
+    lokasi.akurasiMeter > 100
+  ) {
+    throw new AppError('Akurasi GPS harus 100 meter atau lebih baik. Tekan Coba lagi di area terbuka.');
+  }
+
   const sesiRef = doc(db, 'sesi', sesiId);
   const presRef = doc(db, 'sesi', sesiId, 'presensi', profil.uid);
+
   await runTransaction(db, async (tx) => {
-    const sesi = await tx.get(sesiRef);
-    if (!sesi.exists()) throw new AppError('Sesi tidak ditemukan.');
-    if (sesi.get('status') !== 'dibuka') throw new AppError('Sesi belum dibuka atau sudah ditutup.');
-    if ((await tx.get(presRef)).exists()) throw new DuplikatError('Anda sudah presensi pada sesi ini.');
+    // Semua pembacaan harus dilakukan sebelum penulisan transaksi.
+    const sesiSnap = await tx.get(sesiRef);
+    if (!sesiSnap.exists()) throw new AppError('Sesi tidak ditemukan.');
+    if (sesiSnap.get('status') !== 'dibuka') {
+      throw new AppError('Sesi belum dibuka atau sudah ditutup.');
+    }
+
+    const laboratoriumId = sesiSnap.get('laboratoriumId');
+    if (typeof laboratoriumId !== 'string' || !laboratoriumId.trim()) {
+      throw new AppError('Sesi belum ditautkan ke lab, hubungi asisten.');
+    }
+
+    const labRef = doc(db, 'laboratorium', laboratoriumId);
+    const labSnap = await tx.get(labRef);
+    if (!labSnap.exists()) {
+      throw new AppError('Laboratorium sesi sudah tidak tersedia. Hubungi asisten.');
+    }
+
+    const labGeo = {
+      latitude: labSnap.get('latitude'),
+      longitude: labSnap.get('longitude'),
+      radiusMeter: labSnap.get('radiusMeter'),
+    };
+    if (
+      !koordinatValid(labGeo) ||
+      typeof labGeo.radiusMeter !== 'number' ||
+      !Number.isFinite(labGeo.radiusMeter) ||
+      labGeo.radiusMeter <= 0
+    ) {
+      throw new AppError('Koordinat atau radius laboratorium tidak valid. Hubungi asisten.');
+    }
+
+    const evaluasi = evaluasiLokasi(lokasi, labGeo);
+    if (!evaluasi.boleh) {
+      throw new AppError(evaluasi.alasan ?? 'Lokasi tidak memenuhi syarat presensi.');
+    }
+
+    const presensiSnap = await tx.get(presRef);
+    if (presensiSnap.exists()) {
+      throw new DuplikatError('Anda sudah presensi pada sesi ini.');
+    }
+
     tx.set(presRef, {
       uid: profil.uid,
       nama: profil.nama,
       nim: profil.nim ?? '',
-      kelasId: sesi.get('kelasId'),
+      kelasId: sesiSnap.get('kelasId'),
       waktu: serverTimestamp(),
+      laboratoriumId,
+      latitude: lokasi.latitude,
+      longitude: lokasi.longitude,
+      jarakMeter: evaluasi.jarakMeter,
+      akurasiMeter: lokasi.akurasiMeter,
     });
   });
 }

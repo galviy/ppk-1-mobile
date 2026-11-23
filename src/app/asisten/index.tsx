@@ -2,7 +2,6 @@
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-
 import { InputField } from '@/components/ui/input-field';
 import { FormSheet } from '@/components/form-sheet';
 import { LoadingRow, Notice, type NoticeData } from '@/components/notice';
@@ -17,13 +16,14 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Spacing } from '@/constants/theme';
 import type { InputSesi, Sesi } from '@/data/models';
 import { useKelasAsisten, useSesiAsisten } from '@/hooks/use-praktikum';
+import { useLabRefList } from '@/hooks/use-lab-ref';
 import { cekSesi, pesanError } from '@/lib/validasi';
 import { hapusSesi, tambahSesi, ubahSesi } from '@/services/praktikum';
 
 type FormState = InputSesi & { id?: string };
 const hariIni = () => new Date().toISOString().slice(0, 10);
 const formKosong = (kelasId = ''): FormState => ({
-  kelasId, namaPraktikum: '', tanggal: hariIni(), jamMulai: '13:00', jamSelesai: '15:00', ruang: '',
+  kelasId, namaPraktikum: '', tanggal: hariIni(), jamMulai: '13:00', jamSelesai: '15:00', ruang: '', laboratoriumId: '',
 });
 
 export default function AsistenSesiScreen() {
@@ -33,6 +33,7 @@ export default function AsistenSesiScreen() {
 function Isi() {
   const kelas = useKelasAsisten();
   const sesi = useSesiAsisten();
+  const laboratorium = useLabRefList();
   const [form, setForm] = useState<FormState | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,10 +54,13 @@ function Isi() {
     if (!form) return;
     const msg = cekSesi(form);
     if (msg) return setFormError(msg);
+    const labTerpilih = laboratorium.data.find((lab) => lab.id === form.laboratoriumId);
+    if (!labTerpilih) return setFormError('Pilih laboratorium yang tersedia terlebih dahulu.');
     setBusy(true);
     try {
-      if (form.id) await ubahSesi(form.id, form);
-      else await tambahSesi(form);
+      const dataSimpan: InputSesi = { ...form, ruang: labTerpilih.nama };
+      if (form.id) await ubahSesi(form.id, dataSimpan);
+      else await tambahSesi(dataSimpan);
       setForm(null);
       setNotice({ tipe: 'ok', teks: form.id ? 'Sesi diperbarui.' : 'Sesi ditambahkan.' });
     } catch (e) {
@@ -79,7 +83,7 @@ function Isi() {
   };
 
   const set = (k: keyof FormState) => (v: string) => setForm((f) => (f ? { ...f, [k]: v } : f));
-  const error = kelas.error ?? sesi.error;
+  const error = kelas.error ?? sesi.error ?? laboratorium.error;
 
   return (
     <View style={styles.content}>
@@ -98,10 +102,10 @@ function Isi() {
 
       <Notice
         data={notice ?? (error ? { tipe: 'err', teks: error } : null)}
-        onRetry={notice ? undefined : () => { kelas.retry(); sesi.retry(); }}
+        onRetry={notice ? undefined : () => { kelas.retry(); sesi.retry(); laboratorium.retry(); }}
       />
 
-      {sesi.loading || kelas.loading ? (
+      {sesi.loading || kelas.loading || laboratorium.loading ? (
         <LoadingRow />
       ) : (
         <FlatList
@@ -119,7 +123,7 @@ function Isi() {
             <KartuSesi
               sesi={item}
               namaKelas={namaKelas[item.kelasId] ?? 'Kelas dihapus'}
-              onEdit={() => bukaForm({ ...item })}
+              onEdit={() => bukaForm({ ...item, laboratoriumId: item.laboratoriumId ?? '' })}
               onHapus={() => setHapus(item)}
               onResult={(tipe, teks) => setNotice({ tipe, teks })}
             />
@@ -145,13 +149,32 @@ function Isi() {
             );
           })}
         </View>
+        <ThemedText type="small" themeColor="textSecondary">Laboratorium</ThemedText>
+        {laboratorium.data.length === 0 ? (
+          <ThemedText type="small" style={{ color: '#B91C1C' }}>Belum ada laboratorium. Tambahkan data laboratorium terlebih dahulu.</ThemedText>
+        ) : (
+          <View style={styles.chips}>
+            {laboratorium.data.map((lab) => {
+              const aktif = form?.laboratoriumId === lab.id;
+              return (
+                <Pressable
+                  key={lab.id}
+                  onPress={() => setForm((f) => f ? { ...f, laboratoriumId: lab.id, ruang: lab.nama } : f)}
+                  style={[styles.chip, aktif && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, aktif && styles.chipTextActive]}>{lab.nama}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
         <InputField label="Nama praktikum" value={form?.namaPraktikum ?? ''} onChangeText={set('namaPraktikum')} placeholder="Modul 1 — Siklus Hidup" />
         <InputField label="Tanggal (YYYY-MM-DD)" value={form?.tanggal ?? ''} onChangeText={set('tanggal')} autoCapitalize="none" />
         <View style={styles.row}>
           <View style={styles.flex}><InputField label="Jam mulai" value={form?.jamMulai ?? ''} onChangeText={set('jamMulai')} placeholder="13:00" /></View>
           <View style={styles.flex}><InputField label="Jam selesai" value={form?.jamSelesai ?? ''} onChangeText={set('jamSelesai')} placeholder="15:00" /></View>
         </View>
-        <InputField label="Ruang (opsional)" value={form?.ruang ?? ''} onChangeText={set('ruang')} />
+        <InputField label="Ruang (mengikuti laboratorium)" value={form?.ruang ?? ''} disabled />
       </FormSheet>
 
       <ConfirmModal

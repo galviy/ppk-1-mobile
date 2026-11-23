@@ -30,6 +30,7 @@ export function cekPeserta(i: { nama: string; nim: string }): string | null {
 
 export function cekSesi(i: InputSesi): string | null {
   if (!i.kelasId) return 'Pilih kelas terlebih dahulu.';
+  if (!i.laboratoriumId?.trim()) return 'Pilih laboratorium terlebih dahulu.';
   if (i.namaPraktikum.trim().length < 3) return 'Nama praktikum minimal 3 karakter.';
   if (!tanggalValid(i.tanggal.trim())) return 'Tanggal harus berformat YYYY-MM-DD dan valid.';
   if (!REGEX_JAM.test(i.jamMulai.trim()) || !REGEX_JAM.test(i.jamSelesai.trim()))
