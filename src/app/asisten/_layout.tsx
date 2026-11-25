@@ -26,6 +26,14 @@ export default function AsistenTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="maps"
+        options={{
+          title: 'Peta Laboratorium',
+          tabBarLabel: 'Maps',
+          tabBarIcon: () => <Text style={{ fontSize: 18 }}>🗺️</Text>,
+        }}
+      />
+      <Tabs.Screen
         name="kelas"
         options={{
           title: 'Kelas',
@@ -51,6 +59,7 @@ export default function AsistenTabsLayout() {
       />
       {/* layar pendukung (SRS-02): tidak tampil sebagai tab */}
       <Tabs.Screen name="peserta/[kelasId]" options={{ href: null }} />
+      <Tabs.Screen name="laboratorium" options={{ href: null }} />
     </Tabs>
   );
 }

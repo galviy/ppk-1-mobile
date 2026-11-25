@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Pressable,
   ScrollView,
@@ -21,8 +21,32 @@ import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { getAuthErrorMessage } from '@/services/authService';
 
+function useKeyboardHeight() {
+  const [tinggi, setTinggi] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setTinggi(e.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setTinggi(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  return tinggi;
+}
+
 export default function LoginScreen() {
   const { login } = useAuth();
+  const keyboardHeight = useKeyboardHeight();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,105 +86,111 @@ export default function LoginScreen() {
     }
   };
 
+  const isKeyboardVisible = keyboardHeight > 0;
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.keyboardView}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
-            {/* Header Brand */}
-            <View style={styles.brandHeader}>
-              <View style={styles.logoBadge}>
-                <Text style={styles.logoEmoji}>🔬</Text>
-              </View>
-              <ThemedText type="subtitle" style={styles.title}>
-                Praktikum PPK
-              </ThemedText>
-              <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-                Masuk ke akun Anda untuk mengakses jadwal, presensi, dan pengelolaan sesi
-              </ThemedText>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              justifyContent: isKeyboardVisible ? 'flex-start' : 'center',
+              paddingBottom: isKeyboardVisible ? keyboardHeight + 36 : Spacing.six,
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
+          showsVerticalScrollIndicator={false}>
+          {/* Header Brand */}
+          <View style={styles.brandHeader}>
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoEmoji}>🔬</Text>
             </View>
+            <ThemedText type="subtitle" style={styles.title}>
+              Praktikum PPK
+            </ThemedText>
+            <ThemedText themeColor="textSecondary" style={styles.subtitle}>
+              Masuk ke akun Anda untuk mengakses jadwal, presensi, dan pengelolaan sesi
+            </ThemedText>
+          </View>
 
-            {/* Form Card */}
-            <Card style={styles.formCard}>
-              <ThemedText type="smallBold" style={styles.formTitle}>
-                Masuk ke Akun
-              </ThemedText>
+          {/* Form Card */}
+          <Card style={styles.formCard}>
+            <ThemedText type="smallBold" style={styles.formTitle}>
+              Masuk ke Akun
+            </ThemedText>
 
-              {errorMessage && (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorIcon}>⚠️</Text>
-                  <Text style={styles.errorText}>{errorMessage}</Text>
+            {errorMessage && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorIcon}>⚠️</Text>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            )}
+
+            <InputField
+              label="Alamat Email"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              placeholder="nama@email.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              required
+              disabled={isLoading}
+            />
+
+            <InputField
+              label="Kata Sandi"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              placeholder="Minimal 6 karakter"
+              secureTextEntry
+              required
+              disabled={isLoading}
+            />
+
+            <View style={styles.buttonWrapper}>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color="#2563EB" />
+                  <Text style={styles.loadingText}>Memverifikasi akun...</Text>
                 </View>
+              ) : (
+                <PrimaryButton
+                  label="Masuk Sekarang →"
+                  onPress={handleLogin}
+                />
               )}
-
-              <InputField
-                label="Alamat Email"
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (errorMessage) setErrorMessage(null);
-                }}
-                placeholder="nama@email.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                required
-                disabled={isLoading}
-              />
-
-              <InputField
-                label="Kata Sandi"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (errorMessage) setErrorMessage(null);
-                }}
-                placeholder="Minimal 6 karakter"
-                secureTextEntry
-                required
-                disabled={isLoading}
-              />
-
-              <View style={styles.buttonWrapper}>
-                {isLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color="#2563EB" />
-                    <Text style={styles.loadingText}>Memverifikasi akun...</Text>
-                  </View>
-                ) : (
-                  <PrimaryButton
-                    label="Masuk Sekarang →"
-                    onPress={handleLogin}
-                  />
-                )}
-              </View>
-
-              {/* Link ke Registrasi */}
-              <View style={styles.registerPrompt}>
-                <ThemedText themeColor="textSecondary" style={styles.promptText}>
-                  Belum memiliki akun?{' '}
-                </ThemedText>
-                <Pressable
-                  onPress={() => router.push('/(auth)/register')}
-                  hitSlop={8}>
-                  <Text style={styles.registerLink}>Daftar Akun Baru</Text>
-                </Pressable>
-              </View>
-            </Card>
-
-            {/* Quick Demo Hint */}
-            <View style={styles.hintSection}>
-              <Text style={styles.hintBadge}>💡 Tips Pengujian</Text>
-              <Text style={styles.hintText}>
-                Gunakan email dan kata sandi yang telah Anda daftarkan. Pengguna akan diarahkan otomatis ke halaman Praktikan atau Asisten sesuai perannya.
-              </Text>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+
+            {/* Link ke Registrasi */}
+            <View style={styles.registerPrompt}>
+              <ThemedText themeColor="textSecondary" style={styles.promptText}>
+                Belum memiliki akun?{' '}
+              </ThemedText>
+              <Pressable
+                onPress={() => router.push('/(auth)/register')}
+                hitSlop={8}>
+                <Text style={styles.registerLink}>Daftar Akun Baru</Text>
+              </Pressable>
+            </View>
+          </Card>
+
+          {/* Quick Demo Hint */}
+          <View style={styles.hintSection}>
+            <Text style={styles.hintBadge}>💡 Tips Pengujian</Text>
+            <Text style={styles.hintText}>
+              Gunakan email dan kata sandi yang telah Anda daftarkan. Pengguna akan diarahkan otomatis ke halaman Praktikan atau Asisten sesuai perannya.
+            </Text>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -173,15 +203,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  keyboardView: {
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
-    paddingBottom: Spacing.six,
-    justifyContent: 'center',
   },
   brandHeader: {
     alignItems: 'center',
@@ -293,4 +321,3 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
-
