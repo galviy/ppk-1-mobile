@@ -24,7 +24,10 @@ export default function PresensiButton({ sesi }: { sesi: Sesi }) {
   }
 
   const bukaHalamanPresensi = () => {
-    router.push({ pathname: '/presensi/[sesiId]', params: { sesiId: sesi.id } });
+    router.push({
+      pathname: '/presensi/[sesiId]',
+      params: { sesiId: sesi.id },
+    });
   };
 
   return (

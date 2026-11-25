@@ -174,7 +174,12 @@ function Isi() {
           <View style={styles.flex}><InputField label="Jam mulai" value={form?.jamMulai ?? ''} onChangeText={set('jamMulai')} placeholder="13:00" /></View>
           <View style={styles.flex}><InputField label="Jam selesai" value={form?.jamSelesai ?? ''} onChangeText={set('jamSelesai')} placeholder="15:00" /></View>
         </View>
-        <InputField label="Ruang (mengikuti laboratorium)" value={form?.ruang ?? ''} disabled />
+        <InputField
+          label="Ruang (mengikuti laboratorium)"
+          value={form?.ruang ?? ''}
+          onChangeText={() => {}}
+          disabled
+        />
       </FormSheet>
 
       <ConfirmModal

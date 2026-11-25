@@ -26,6 +26,14 @@ export default function PraktikanTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="maps"
+        options={{
+          title: 'Peta Laboratorium',
+          tabBarLabel: 'Maps',
+          tabBarIcon: () => <Text style={{ fontSize: 18 }}>🗺️</Text>,
+        }}
+      />
+      <Tabs.Screen
         name="riwayat"
         options={{
           title: 'Riwayat Presensi',
