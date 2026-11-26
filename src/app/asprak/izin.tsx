@@ -1,4 +1,4 @@
-// Tab "Izin" (asisten): daftar pengajuan izin + filter status, real-time dari Firestore.
+// Tab "Izin" (asprak): daftar pengajuan izin + filter status, real-time dari Firestore.
 // Keputusan (Terima/Tolak) diberikan di halaman detail `/izin/[id]`.
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
@@ -24,7 +24,7 @@ const FILTERS: { key: FilterStatus; label: string }[] = [
   { key: 'ditolak', label: STATUS_IZIN_LABEL.ditolak },
 ];
 
-export default function AsistenIzinScreen() {
+export default function AsprakIzinScreen() {
   return <ScreenShell>{() => <Isi />}</ScreenShell>;
 }
 

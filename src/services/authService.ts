@@ -5,8 +5,8 @@ import {
   updateProfile,
   User,
 } from 'firebase/auth';
-import { auth } from '@/config/firebase';
-import { RegisterPayload, UserProfile } from '@/data/types';
+import { auth } from '../config/firebase';
+import { normalizeRole, RegisterPayload, UserProfile } from '../data/types';
 import { getUserProfile, saveUserProfile } from './userService';
 
 /**
@@ -35,12 +35,12 @@ export async function registerUser(payload: RegisterPayload): Promise<{
     }
   }
 
-  // Siapkan data profil pengguna untuk Firestore (FR-01.4 & FR-01.5)
+  // Siapkan data profil pengguna untuk Firestore (FR-01.4, FR-01.5, FR-S4-01.3)
   const profile: UserProfile = {
     uid: firebaseUser.uid,
     email: payload.email.trim(),
     nama: payload.nama.trim(),
-    role: payload.role,
+    role: normalizeRole(payload.role) ?? 'praktikan',
     ...(payload.nim ? { nim: payload.nim.trim() } : {}),
     ...(payload.kelas ? { kelas: payload.kelas } : {}),
     ...(payload.nip ? { nip: payload.nip.trim() } : {}),

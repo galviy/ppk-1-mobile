@@ -14,6 +14,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { useKelasDetail, usePresensiSesi, useSesiDetail } from '@/hooks/use-praktikum';
 import { tanggalDariIso } from '@/lib/format';
 import type { Peran } from '@/data/models';
+import { isAslabRole, isAsprakRole } from '../../data/types';
 
 function Baris({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -30,9 +31,10 @@ export default function DetailSesiScreen() {
 
 function Isi({ peran }: { peran: Peran }) {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const isStaff = isAsprakRole(peran) || isAslabRole(peran);
   const sesi = useSesiDetail(id ?? null);
   const kelas = useKelasDetail(sesi.data?.kelasId ?? null);
-  const presensi = usePresensiSesi(peran === 'asisten' ? (id ?? null) : null);
+  const presensi = usePresensiSesi(isStaff ? (id ?? null) : null);
   const [notice, setNotice] = React.useState<NoticeData>(null);
   const error = sesi.error ?? kelas.error;
 
@@ -65,7 +67,7 @@ function Isi({ peran }: { peran: Peran }) {
           </Card>
 
           <View style={styles.slot}>
-            {peran === 'asisten' ? (
+            {isStaff ? (
               <SesiAksi
                 sesi={sesi.data}
                 namaKelas={kelas.data?.nama ?? 'Kelas'}

@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
+import { DarkTheme, DefaultTheme, Href, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { PermissionNotice } from '@/components/device';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { AppProvider } from '@/data/store';
-import { useNotifications } from '@/hooks/use-notifications';
+import { AnimatedSplashOverlay } from '../components/animated-icon';
+import { PermissionNotice } from '../components/device';
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import { AppProvider } from '../data/store';
+import { useNotifications } from '../hooks/use-notifications';
+import { useTheme } from '../hooks/use-theme';
+import { resolveRoleGuardRedirect } from '../lib/role-routing';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -20,49 +22,20 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const segments = useSegments();
   const router = useRouter();
+  const theme = useTheme();
 
-  // Membatasi akses dan mengarahkan pengguna berdasarkan role dan status login (FR-01.8, FR-01.9, FR-01.11, S3-01.6)
+  // Membatasi akses dan mengarahkan pengguna berdasarkan RBAC 3 peran (FR-01.8, FR-01.9, FR-01.11, S3-01.6, FR-S4-01.4)
   useEffect(() => {
     if (isLoading) return;
 
     const firstSegment = segments[0] as string | undefined;
-    const inAuthGroup = firstSegment === '(auth)';
-    const inPraktikanGroup = firstSegment === 'praktikan';
-    const inAsistenGroup = firstSegment === 'asisten';
-    const inIzinGroup = firstSegment === 'izin';
-    const inPresensiGroup = firstSegment === 'presensi';
-    const inMapsGroup = firstSegment === 'maps';
-    const isPilihIdentitas = firstSegment === 'pilih-identitas';
-    const isRoot = !firstSegment || firstSegment === 'index';
+    const redirectTarget = resolveRoleGuardRedirect(
+      user?.role ?? null,
+      firstSegment,
+    );
 
-    if (!user) {
-      // Jika pengguna belum login dan mencoba mengakses rute yang dilindungi (FR-01.11, FR-04.8, S3-01.6)
-      if (
-        inPraktikanGroup ||
-        inAsistenGroup ||
-        inIzinGroup ||
-        inPresensiGroup ||
-        inMapsGroup ||
-        firstSegment === 'sesi' ||
-        isPilihIdentitas
-      ) {
-        router.replace('/(auth)/login');
-      }
-    } else {
-      // Pengguna sudah login (FR-01.8, FR-01.9, FR-01.11)
-      if (inAuthGroup || isRoot || isPilihIdentitas) {
-        if (user.role === 'praktikan') {
-          router.replace('/praktikan');
-        } else {
-          router.replace('/asisten');
-        }
-      } else if (inPraktikanGroup && user.role !== 'praktikan') {
-        // Pembatasan akses: asisten tidak boleh akses halaman praktikan
-        router.replace('/asisten');
-      } else if (inAsistenGroup && user.role !== 'asisten') {
-        // Pembatasan akses: praktikan tidak boleh akses halaman asisten
-        router.replace('/praktikan');
-      }
+    if (redirectTarget) {
+      router.replace(redirectTarget as Href);
     }
   }, [user, isLoading, segments, router]);
 
@@ -91,7 +64,9 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
             accessibilityRole="button"
             accessibilityLabel="Tutup pemberitahuan"
             style={styles.dismissBtn}>
-            <Text style={styles.dismissText}>Tutup</Text>
+            <Text style={[styles.dismissText, { color: theme.warningText }]}>
+              Tutup
+            </Text>
           </Pressable>
         </View>
       ) : null}
@@ -115,7 +90,8 @@ export default function RootLayout() {
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="pilih-identitas" options={{ headerShown: false }} />
               <Stack.Screen name="praktikan" options={{ headerShown: false }} />
-              <Stack.Screen name="asisten" options={{ headerShown: false }} />
+              <Stack.Screen name="aslab" options={{ headerShown: false }} />
+              <Stack.Screen name="asprak" options={{ headerShown: false }} />
               <Stack.Screen name="sesi" options={{ headerShown: false }} />
             </Stack>
           </NavigationGuard>
@@ -151,6 +127,5 @@ const styles = StyleSheet.create({
   dismissText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#78350F',
   },
 });

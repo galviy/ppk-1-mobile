@@ -1,4 +1,4 @@
-// Tab "Rekap" (asisten): kehadiran per sesi, real-time lewat listener Firestore.
+// Tab "Rekap" (asprak): kehadiran per sesi, real-time lewat listener Firestore.
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -13,7 +13,7 @@ import { Spacing } from '@/constants/theme';
 import { jamDetik } from '@/lib/format';
 import { useKelasAsisten, usePeserta, usePresensiSesi, useSesiAsisten } from '@/hooks/use-praktikum';
 
-export default function AsistenRekapScreen() {
+export default function AsprakRekapScreen() {
   return <ScreenShell>{() => <Isi />}</ScreenShell>;
 }
 

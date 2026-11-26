@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,20 +10,23 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { Href, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Card } from '@/components/ui/card';
-import { InputField } from '@/components/ui/input-field';
-import { PrimaryButton } from '@/components/ui/primary-button';
-import { Spacing } from '@/constants/theme';
-import { useAuth } from '@/context/AuthContext';
-import { getAuthErrorMessage } from '@/services/authService';
+import { ThemedText } from '../../components/themed-text';
+import { ThemedView } from '../../components/themed-view';
+import { Card } from '../../components/ui/card';
+import { InputField } from '../../components/ui/input-field';
+import { PrimaryButton } from '../../components/ui/primary-button';
+import { Radius, Spacing, Typography } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../hooks/use-theme';
+import { getHomeRouteForRole } from '../../lib/role-routing';
+import { getAuthErrorMessage } from '../../services/authService';
 
 export default function RegisterScreen() {
   const { register } = useAuth();
+  const theme = useTheme();
 
   const [nama, setNama] = useState('');
   const [email, setEmail] = useState('');
@@ -66,7 +70,7 @@ export default function RegisterScreen() {
     setIsLoading(true);
     try {
       // Registrasi akun Firebase Auth & simpan profil ke Firestore (FR-01.1, FR-01.4, FR-01.5, FR-01.6)
-      // Peran unggah mandiri selalu 'praktikan'; akun asisten dibuat/dipromosikan oleh asisten (FR-04.4)
+      // Registrasi publik selalu 'praktikan'; akun Aslab dan Asprak dikelola secara aman (FR-04.4, FR-S4-01.3)
       const userProfile = await register({
         email,
         password,
@@ -76,13 +80,9 @@ export default function RegisterScreen() {
         kelas,
       });
 
-      // Arahkan otomatis ke dashboard praktikan (FR-01.8)
-      if (userProfile.role === 'praktikan') {
-        router.replace('/praktikan');
-      } else {
-        router.replace('/asisten');
-      }
-    } catch (error: any) {
+      // Arahkan otomatis ke dashboard peran sah (FR-S4-01.4)
+      router.replace(getHomeRouteForRole(userProfile.role) as Href);
+    } catch (error: unknown) {
       // Tampilkan pesan error yang deskriptif (FR-01.10)
       const message = getAuthErrorMessage(error);
       setErrorMessage(message);
@@ -107,25 +107,50 @@ export default function RegisterScreen() {
                 onPress={() => router.back()}
                 style={({ pressed }) => [
                   styles.backBtn,
+                  {
+                    backgroundColor: theme.secondaryBg,
+                    borderColor: theme.secondaryBorder,
+                  },
                   pressed && styles.backBtnPressed,
                 ]}>
-                <Text style={styles.backBtnText}>← Kembali ke Login</Text>
+                <Ionicons
+                  name="arrow-back"
+                  size={15}
+                  color={theme.secondaryText}
+                />
+                <Text
+                  style={[styles.backBtnText, { color: theme.secondaryText }]}>
+                  Kembali ke Login
+                </Text>
               </Pressable>
 
               <ThemedText type="subtitle" style={styles.title}>
                 Registrasi Akun Baru
               </ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-                Daftar akun praktikan. Akun asisten dibuat oleh asisten laboratorium.
+                Daftar akun praktikan. Akun Aslab dan Asprak dikelola secara khusus.
               </ThemedText>
             </View>
 
             {/* Form Card */}
             <Card style={styles.formCard}>
               {errorMessage && (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorIcon}>⚠️</Text>
-                  <Text style={styles.errorText}>{errorMessage}</Text>
+                <View
+                  style={[
+                    styles.errorBox,
+                    {
+                      backgroundColor: theme.dangerBg,
+                      borderColor: theme.dangerBorder,
+                    },
+                  ]}>
+                  <Ionicons
+                    name="alert-circle-outline"
+                    size={18}
+                    color={theme.dangerText}
+                  />
+                  <Text style={[styles.errorText, { color: theme.dangerText }]}>
+                    {errorMessage}
+                  </Text>
                 </View>
               )}
 
@@ -171,7 +196,9 @@ export default function RegisterScreen() {
               />
 
               <View style={styles.kelasSection}>
-                <Text style={styles.roleLabel}>Pilih Kelas Praktikum *</Text>
+                <Text style={[styles.roleLabel, { color: theme.text }]}>
+                  Pilih Kelas Praktikum *
+                </Text>
                 <View style={styles.kelasRow}>
                   {(['A', 'B'] as const).map((k) => {
                     const isSelected = kelas === k;
@@ -181,12 +208,23 @@ export default function RegisterScreen() {
                         onPress={() => setKelas(k)}
                         style={[
                           styles.kelasChip,
-                          isSelected && styles.kelasChipActive,
+                          {
+                            backgroundColor: isSelected
+                              ? theme.primary
+                              : theme.backgroundElement,
+                            borderColor: isSelected
+                              ? theme.primary
+                              : theme.border,
+                          },
                         ]}>
                         <Text
                           style={[
                             styles.kelasChipText,
-                            isSelected && styles.kelasChipTextActive,
+                            {
+                              color: isSelected
+                                ? theme.onPrimary
+                                : theme.textSecondary,
+                            },
                           ]}>
                           Kelas {k}
                         </Text>
@@ -224,13 +262,20 @@ export default function RegisterScreen() {
 
               <View style={styles.buttonWrapper}>
                 {isLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color="#2563EB" />
-                    <Text style={styles.loadingText}>Mendaftarkan akun Anda...</Text>
+                  <View
+                    style={[
+                      styles.loadingContainer,
+                      { backgroundColor: theme.primaryBg },
+                    ]}>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                    <Text
+                      style={[styles.loadingText, { color: theme.primaryText }]}>
+                      Mendaftarkan akun Anda...
+                    </Text>
                   </View>
                 ) : (
                   <PrimaryButton
-                    label="Daftar Akun Sekarang →"
+                    label="Daftar Akun Sekarang"
                     onPress={handleRegister}
                   />
                 )}
@@ -244,7 +289,9 @@ export default function RegisterScreen() {
                 <Pressable
                   onPress={() => router.replace('/(auth)/login')}
                   hitSlop={8}>
-                  <Text style={styles.loginLink}>Masuk di sini</Text>
+                  <Text style={[styles.loginLink, { color: theme.primaryText }]}>
+                    Masuk di sini
+                  </Text>
                 </Pressable>
               </View>
             </Card>
@@ -276,19 +323,21 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
+    borderRadius: Radius.sm,
+    borderWidth: 1,
     marginBottom: 12,
   },
   backBtnPressed: {
     opacity: 0.7,
   },
   backBtnText: {
-    fontSize: 13,
+    ...Typography.bodySmall,
     fontWeight: '600',
-    color: '#334155',
   },
   title: {
     fontSize: 24,
@@ -301,33 +350,24 @@ const styles = StyleSheet.create({
   },
   formCard: {
     padding: 20,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
     padding: 12,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     marginBottom: 16,
     gap: 8,
   },
-  errorIcon: {
-    fontSize: 16,
-  },
   errorText: {
     flex: 1,
-    color: '#B91C1C',
-    fontSize: 13,
-    lineHeight: 18,
+    ...Typography.bodySmall,
     fontWeight: '500',
   },
   roleLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
+    ...Typography.label,
     marginBottom: 8,
   },
   kelasSection: {
@@ -340,24 +380,13 @@ const styles = StyleSheet.create({
   kelasChip: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
-  },
-  kelasChipActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#2563EB',
   },
   kelasChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  kelasChipTextActive: {
-    color: '#FFFFFF',
+    ...Typography.label,
   },
   buttonWrapper: {
     marginTop: 8,
@@ -367,13 +396,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     gap: 10,
   },
   loadingText: {
     fontSize: 15,
-    color: '#2563EB',
     fontWeight: '600',
   },
   loginPrompt: {
@@ -388,7 +415,6 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2563EB',
   },
 });
 

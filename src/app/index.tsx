@@ -1,31 +1,31 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { Href, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Card } from '@/components/ui/card';
-import { PrimaryButton } from '@/components/ui/primary-button';
-import { Spacing } from '@/constants/theme';
-import { useAuth } from '@/context/AuthContext';
+import { ThemedText } from '../components/themed-text';
+import { ThemedView } from '../components/themed-view';
+import { Card } from '../components/ui/card';
+import { PrimaryButton } from '../components/ui/primary-button';
+import { Radius, Spacing, Typography } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../hooks/use-theme';
+import { getHomeRouteForRole } from '../lib/role-routing';
 
 export default function IndexScreen() {
   const { user, isLoading } = useAuth();
+  const theme = useTheme();
 
-  // Mempertahankan sesi login dan mengarahkan otomatis sesuai role (FR-01.8 & FR-01.9)
+  // Mempertahankan sesi login dan mengarahkan otomatis sesuai 3 peran (FR-01.8, FR-01.9, FR-S4-01.4)
   useEffect(() => {
     if (!isLoading) {
       if (user) {
-        if (user.role === 'praktikan') {
-          router.replace('/praktikan');
-        } else {
-          router.replace('/asisten');
-        }
+        router.replace(getHomeRouteForRole(user.role) as Href);
       } else {
         router.replace('/(auth)/login');
       }
@@ -35,8 +35,10 @@ export default function IndexScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <ThemedText style={styles.loadingText}>Memuat sesi autentikasi...</ThemedText>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText themeColor="textSecondary" style={styles.loadingText}>
+          Memuat sesi autentikasi...
+        </ThemedText>
       </ThemedView>
     );
   }
@@ -45,36 +47,56 @@ export default function IndexScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <View style={styles.badgeTop}>
-            <ThemedText type="smallBold" style={styles.badgeTopText}>
-              Aplikasi Praktikum PPK • Sprint 2
+          <View
+            style={[
+              styles.badgeTop,
+              {
+                backgroundColor: theme.primaryBg,
+                borderColor: theme.primaryBorder,
+              },
+            ]}>
+            <ThemedText
+              type="smallBold"
+              style={[styles.badgeTopText, { color: theme.primaryText }]}>
+              Aplikasi Praktikum PPK
             </ThemedText>
           </View>
           <ThemedText type="subtitle" style={styles.title}>
             Selamat Datang
           </ThemedText>
           <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-            Sistem Autentikasi dan Manajemen Pengguna Praktikum
+            Sistem Presensi, Manajemen Laboratorium, dan Pembayaran Praktikum
           </ThemedText>
         </View>
 
         <View style={styles.cardContainer}>
           <Card style={styles.mainCard}>
             <View style={styles.cardHeader}>
-              <View style={styles.iconCircle}>
-                <ThemedText style={styles.iconEmoji}>🔐</ThemedText>
+              <View
+                style={[
+                  styles.iconCircle,
+                  {
+                    backgroundColor: theme.primaryBg,
+                    borderColor: theme.primaryBorder,
+                  },
+                ]}>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={26}
+                  color={theme.primaryText}
+                />
               </View>
               <View style={styles.cardTextWrapper}>
                 <ThemedText type="smallBold" style={styles.roleTitle}>
-                  Autentikasi Firebase (SRS-01)
+                  Autentikasi Akun PPK
                 </ThemedText>
                 <ThemedText themeColor="textSecondary" style={styles.roleDesc}>
-                  Masuk dengan akun terdaftar atau buat akun praktikan baru.
+                  Masuk dengan akun Aslab, Asprak, atau Praktikan terdaftar.
                 </ThemedText>
               </View>
             </View>
             <PrimaryButton
-              label="Buka Halaman Login →"
+              label="Buka Halaman Login"
               onPress={() => router.replace('/(auth)/login')}
               style={styles.cardButton}
             />
@@ -83,7 +105,7 @@ export default function IndexScreen() {
 
         <View style={styles.footer}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.footerText}>
-            SRS-01 • Autentikasi dan Manajemen Pengguna
+            Aplikasi Praktikum PPK • RBAC 3 Peran
           </ThemedText>
         </View>
       </SafeAreaView>
@@ -102,8 +124,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
+    ...Typography.bodySmall,
     fontSize: 14,
-    color: '#64748B',
   },
   safeArea: {
     flex: 1,
@@ -116,16 +138,13 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   badgeTop: {
-    backgroundColor: '#EFF6FF',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: Radius.full,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
   },
   badgeTopText: {
-    color: '#2563EB',
     fontSize: 12,
   },
   title: {
@@ -157,12 +176,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#DBEAFE',
-  },
-  iconEmoji: {
-    fontSize: 26,
   },
   cardTextWrapper: {
     flex: 1,

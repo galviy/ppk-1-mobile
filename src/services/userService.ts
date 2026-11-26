@@ -1,8 +1,15 @@
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase';
-import { UserProfile } from '@/data/types';
+import { db } from '../config/firebase';
+import { normalizeRole, UserProfile } from '../data/types';
 
 const USERS_COLLECTION = 'users';
+
+function normalizeUserProfile(profile: UserProfile): UserProfile {
+  return {
+    ...profile,
+    role: normalizeRole(profile.role) ?? 'praktikan',
+  };
+}
 
 /**
  * Menyimpan profil pengguna ke Cloud Firestore berdasarkan UID (FR-01.4, FR-01.5)
@@ -12,7 +19,7 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
   const now = new Date().toISOString();
 
   const dataToSave = {
-    ...profile,
+    ...normalizeUserProfile(profile),
     createdAt: profile.createdAt || now,
     updatedAt: now,
   };
@@ -21,7 +28,7 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
 }
 
 /**
- * Mengambil profil pengguna dari Cloud Firestore berdasarkan UID (FR-01.7)
+ * Mengambil profil pengguna dari Cloud Firestore berdasarkan UID (FR-01.7, FR-S4-01.3)
  */
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   try {
@@ -29,7 +36,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     const snapshot = await getDoc(userRef);
 
     if (snapshot.exists()) {
-      return snapshot.data() as UserProfile;
+      return normalizeUserProfile(snapshot.data() as UserProfile);
     }
     return null;
   } catch (error) {
