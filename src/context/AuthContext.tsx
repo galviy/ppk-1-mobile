@@ -3,6 +3,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import { RegisterPayload, UserProfile } from '@/data/types';
 import { loginUser, logoutUser, registerUser } from '@/services/authService';
+import { clearUserPushToken } from '@/services/notifications';
 import { getUserProfile } from '@/services/userService';
 
 export interface AuthContextType {
@@ -82,6 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
+      const currentUid = firebaseUser?.uid || user?.uid;
+      if (currentUid) {
+        await clearUserPushToken(currentUid);
+      }
       await logoutUser();
       setUser(null);
       setFirebaseUser(null);

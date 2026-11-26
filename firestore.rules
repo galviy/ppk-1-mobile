@@ -66,7 +66,18 @@ service cloud.firestore {
     match /laboratorium/{labId} {
       allow read: if signedIn();
       allow create: if isAsisten()
-        && request.resource.data.keys().hasOnly(['nama', 'kode', 'deskripsi', 'latitude', 'longitude', 'radiusMeter', 'updatedAt'])
+        && request.resource.data.keys().hasOnly([
+          'nama',
+          'kode',
+          'deskripsi',
+          'latitude',
+          'longitude',
+          'radiusMeter',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
         && labValid(request.resource.data);
       allow update: if isAsisten()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nama', 'kode', 'deskripsi', 'latitude', 'longitude', 'radiusMeter', 'updatedAt'])

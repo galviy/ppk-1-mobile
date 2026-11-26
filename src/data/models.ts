@@ -12,6 +12,16 @@ export type Profil = { uid: string; nama: string; nim?: string; role: Peran };
 export type Kelas = { id: string; nama: string; keterangan: string; pesertaUids: string[] };
 export type Peserta = { uid: string; nama: string; nim: string };
 
+/** Data laboratorium sementara; akan diganti kontrak resmi P3 setelah merge. */
+export type LabRef = {
+  id: string;
+  nama: string;
+  kode: string;
+  latitude: number;
+  longitude: number;
+  radiusMeter: number;
+};
+
 export type InputSesi = {
   kelasId: string;
   namaPraktikum: string;
@@ -19,8 +29,14 @@ export type InputSesi = {
   jamMulai: string; // HH:MM
   jamSelesai: string; // HH:MM
   ruang: string;
+  /** Wajib untuk sesi baru; opsional saat membaca data sesi lama. */
+  laboratoriumId: string;
 };
-export type Sesi = InputSesi & { id: string; status: StatusSesi };
+export type Sesi = Omit<InputSesi, 'laboratoriumId'> & {
+  id: string;
+  status: StatusSesi;
+  laboratoriumId?: string;
+};
 
 export type Presensi = {
   uid: string;
@@ -28,4 +44,10 @@ export type Presensi = {
   nim: string;
   kelasId: string;
   waktu: Date | null; // null sesaat sebelum timestamp server tiba
+  // Opsional hanya untuk kompatibilitas dokumen presensi Sprint 2.
+  laboratoriumId?: string;
+  latitude?: number;
+  longitude?: number;
+  jarakMeter?: number;
+  akurasiMeter?: number;
 };
