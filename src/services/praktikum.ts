@@ -5,6 +5,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -30,10 +31,20 @@ import type {
 } from '@/data/models';
 import { db } from '@/config/firebase';
 import { AppError, DuplikatError, cekKelas, cekPeserta, cekSesi } from '@/lib/validasi';
+import {
+  kirimNotifikasiJadwalBerubah,
+  kirimNotifikasiSesiDibuka,
+} from '@/services/push-sender';
 
 export type OnData<T> = (data: T) => void;
 export type OnError = (e: unknown) => void;
 export type Subscribe<T> = (onData: OnData<T>, onError: OnError) => Unsubscribe;
+
+function kirimNotifikasiAman(task: Promise<number>): void {
+  void task.catch((error) => {
+    console.warn('[push] Notifikasi tidak terkirim:', error);
+  });
+}
 
 // ---------- pemetaan dokumen ----------
 const mapKelas = (d: DocumentSnapshot<DocumentData>): Kelas => ({
@@ -261,7 +272,30 @@ export async function tambahSesi(i: InputSesi) {
 export async function ubahSesi(id: string, i: InputSesi) {
   const msg = cekSesi(i);
   if (msg) throw new AppError(msg);
-  await updateDoc(doc(db, 'sesi', id), bersihkan(i));
+  const sesiRef = doc(db, 'sesi', id);
+  const sebelum = await getDoc(sesiRef);
+  const data = bersihkan(i);
+  await updateDoc(sesiRef, data);
+
+  const labBaru = (data as InputSesi & { laboratoriumId?: string }).laboratoriumId ?? null;
+  const berubah =
+    sebelum.get('tanggal') !== data.tanggal ||
+    sebelum.get('jamMulai') !== data.jamMulai ||
+    sebelum.get('jamSelesai') !== data.jamSelesai ||
+    (sebelum.get('laboratoriumId') ?? null) !== labBaru;
+
+  if (sebelum.exists() && berubah) {
+    kirimNotifikasiAman(
+      kirimNotifikasiJadwalBerubah({
+        sesiId: id,
+        kelasId: data.kelasId,
+        namaPraktikum: data.namaPraktikum,
+        tanggal: data.tanggal,
+        jamMulai: data.jamMulai,
+        jamSelesai: data.jamSelesai,
+      }),
+    );
+  }
 }
 
 export async function hapusSesi(id: string) {
@@ -273,7 +307,19 @@ export async function hapusSesi(id: string) {
 }
 
 export async function setStatusSesi(id: string, status: StatusSesi) {
-  await updateDoc(doc(db, 'sesi', id), { status });
+  const sesiRef = doc(db, 'sesi', id);
+  const sebelum = await getDoc(sesiRef);
+  await updateDoc(sesiRef, { status });
+
+  if (status === 'dibuka' && sebelum.get('status') !== 'dibuka') {
+    kirimNotifikasiAman(
+      kirimNotifikasiSesiDibuka({
+        sesiId: id,
+        kelasId: sebelum.get('kelasId') ?? '',
+        namaPraktikum: sebelum.get('namaPraktikum') ?? undefined,
+      }),
+    );
+  }
 }
 
 // ---------- presensi (atomik) ----------
