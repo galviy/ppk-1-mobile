@@ -25,9 +25,16 @@ import type { Profil } from '@/data/models';
 import { validateReason } from '@/lib/leave-rules';
 import { AppError, DuplikatError } from '@/lib/validasi';
 import type { Subscribe } from '@/services/praktikum';
+import { kirimNotifikasiIzinDiputuskan } from '@/services/push-sender';
 import { analyzeReason } from '@/services/sentiment-service';
 
 const IZIN_COLLECTION = 'izin';
+
+function kirimNotifikasiAman(task: Promise<number>): void {
+  void task.catch((error) => {
+    console.warn('[push] Notifikasi tidak terkirim:', error);
+  });
+}
 
 export function buatIzinId(sesiId: string, uid: string): string {
   return `${sesiId}_${uid}`;
@@ -281,6 +288,7 @@ export async function putuskanIzin(
   }
 
   const izinRef = doc(db, IZIN_COLLECTION, izinId);
+  let penerimaUid = '';
 
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(izinRef);
@@ -292,10 +300,21 @@ export async function putuskanIzin(
       throw new AppError('Pengajuan izin ini sudah diputuskan sebelumnya.');
     }
 
+    penerimaUid = snap.get('uid') ?? '';
     tx.update(izinRef, {
       status: keputusan,
       diputuskanOleh: profilAsisten.uid,
       diputuskanPada: serverTimestamp(),
     });
   });
+
+  if (penerimaUid) {
+    kirimNotifikasiAman(
+      kirimNotifikasiIzinDiputuskan({
+        izinId,
+        uid: penerimaUid,
+        status: keputusan,
+      }),
+    );
+  }
 }

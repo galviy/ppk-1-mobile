@@ -14,7 +14,7 @@ Acuan: `todo.pdf` bagian 6 (kontrak bersama) dan bagian 11 (SRS-04).
 | S3-04.4 Tes Rules dan deploy | `tests/rules/firestore.rules.test.mjs` | Tes lulus di emulator; **deploy menunggu skema P2/P3 final** |
 | S3-04.5 `getAktivitasLab` + tes unit | `src/lib/lab-activity.ts`, `tests/lib/lab-activity.test.mjs` | Selesai |
 | S3-04.6 `push-sender.ts` | `src/lib/push.ts`, `src/services/push-sender.ts`, `tests/lib/push.test.mjs` | Selesai (draf) |
-| S3-04.7 Pemasangan notifikasi di 3 kejadian | `src/services/praktikum.ts`, `src/services/izin.ts` | **Menunggu PR P2** |
+| S3-04.7 Pemasangan notifikasi di 3 kejadian | `src/services/praktikum.ts`, `src/services/izin.ts` | Selesai (kode); uji E2E menunggu APK P1 dan merge P2/P3 |
 | S3-04.8 Uji E2E 3 alur + regresi Sprint 2 | dokumen ini | **Menunggu APK P1 dan merge P2/P3** |
 
 ### Semantik `getAktivitasLab`
