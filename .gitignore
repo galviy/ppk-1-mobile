@@ -22,6 +22,14 @@ npm-debug.*
 .env
 .env.local
 .env.*.local
+backend/.env
+backend/.env.local
+backend/.env.*.local
+
+# Backend secrets
+*service-account*.json
+backend/*service-account*.json
+backend/**/*service-account*.json
 
 # OS
 .DS_Store

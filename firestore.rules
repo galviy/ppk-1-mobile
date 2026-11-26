@@ -2,21 +2,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ===== helper identitas & peran (RBAC 3 peran + kompatibilitas 'asisten') =====
     function signedIn() { return request.auth != null; }
-    function profil() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
-    function isAsisten() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && profil().role == 'asisten';
+    function userDok(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
     }
-    function isPraktikan() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && profil().role == 'praktikan';
+    function profil() { return userDok(request.auth.uid); }
+    function punyaProfil() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
-    function isPeserta(kelasId) {
-      return signedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/kelas/$(kelasId)).data.pesertaUids;
+    function isAslab() { return punyaProfil() && profil().role == 'aslab'; }
+    function isAsprak() {
+      return punyaProfil()
+        && (profil().role == 'asprak' || profil().role == 'asisten');
+    }
+    function isPraktikan() { return punyaProfil() && profil().role == 'praktikan'; }
+
+    function kelasDok(kelasId) {
+      return get(/databases/$(database)/documents/kelas/$(kelasId)).data;
     }
     function sesiDok(sesiId) {
       return get(/databases/$(database)/documents/sesi/$(sesiId)).data;
@@ -24,21 +27,40 @@ service cloud.firestore {
     function labDok(labId) {
       return get(/databases/$(database)/documents/laboratorium/$(labId)).data;
     }
-    function dalamRadiusPresensi(sesiId, latitude, longitude) {
-      let sesi = sesiDok(sesiId);
-      let lab = labDok(sesi.laboratoriumId);
-      let selisihLatitude = (latitude - lab.latitude) * 111320;
-      let selisihLongitude = (longitude - lab.longitude) * 111320;
-      return math.pow(selisihLatitude, 2) + math.pow(selisihLongitude, 2)
-        <= math.pow(lab.radiusMeter, 2);
+
+    function isPeserta(kelasId) {
+      return signedIn() && request.auth.uid in kelasDok(kelasId).get('pesertaUids', []);
     }
+    function isAsprakKelas(kelasId) {
+      return isAsprak() && request.auth.uid in kelasDok(kelasId).get('asprakUids', []);
+    }
+    function isAsprakSesi(kelasId, labId) {
+      return isAsprak() && (
+        request.auth.uid in kelasDok(kelasId).get('asprakUids', [])
+        || (labId != null && request.auth.uid in labDok(labId).get('asprakUids', []))
+      );
+    }
+
+    // ===== validasi dokumen =====
     function labValid(data) {
       return data.nama is string && data.nama.size() >= 1 && data.nama.size() <= 100
         && data.kode is string && data.kode.size() <= 20
         && data.deskripsi is string && data.deskripsi.size() <= 500
         && data.latitude is number && data.latitude >= -90 && data.latitude <= 90
         && data.longitude is number && data.longitude >= -180 && data.longitude <= 180
-        && data.radiusMeter is number && data.radiusMeter >= 10 && data.radiusMeter <= 500;
+        && data.radiusMeter is number && data.radiusMeter >= 10 && data.radiusMeter <= 500
+        && (!('gracePeriodMenit' in data)
+            || (data.gracePeriodMenit is number
+                && data.gracePeriodMenit >= 0 && data.gracePeriodMenit <= 120))
+        && (!('nominalDenda' in data)
+            || (data.nominalDenda is number && data.nominalDenda >= 0))
+        && (!('lokasi' in data) || (data.lokasi is string && data.lokasi.size() <= 100))
+        && (!('mataKuliahKode' in data) || data.mataKuliahKode is string)
+        && (!('mataKuliahNama' in data) || data.mataKuliahNama is string)
+        && (!('aslabUid' in data) || data.aslabUid is string)
+        && (!('asprakUids' in data) || data.asprakUids is list)
+        && (!('praktikanUids' in data) || data.praktikanUids is list)
+        && (!('defaultKelasId' in data) || data.defaultKelasId is string);
     }
     function tokenPushValid(data) {
       return !('expoPushToken' in data)
@@ -49,111 +71,254 @@ service cloud.firestore {
     function tokenPushWaktuValid(data) {
       return !('pushTokenUpdatedAt' in data) || data.pushTokenUpdatedAt is string;
     }
-    match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAsisten());
+    function dalamRadiusPresensi(sesiId, latitude, longitude) {
+      let sesi = sesiDok(sesiId);
+      let lab = labDok(sesi.laboratoriumId);
+      let selisihLatitude = (latitude - lab.latitude) * 111320;
+      let selisihLongitude = (longitude - lab.longitude) * 111320;
+      return math.pow(selisihLatitude, 2) + math.pow(selisihLongitude, 2)
+        <= math.pow(lab.radiusMeter, 2);
+    }
+    function izinDiterima(sesiId, uid) {
+      let id = sesiId + '_' + uid;
+      return exists(/databases/$(database)/documents/izin/$(id))
+        && get(/databases/$(database)/documents/izin/$(id)).data.status == 'diterima';
+    }
 
-      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid && request.resource.data.role == 'praktikan';
+    // ===== users =====
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAslab() || isAsprak());
+
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role == 'praktikan';
 
       allow update: if signedIn() && request.auth.uid == uid
         && request.resource.data.role == resource.data.role
         && tokenPushValid(request.resource.data)
         && tokenPushWaktuValid(request.resource.data);
 
-      allow update: if isAsisten() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) && request.resource.data.role in ['praktikan', 'asisten'];
+      // Penugasan peran hanya oleh Aslab (atau Admin SDK yang melewati Rules).
+      allow update: if isAslab()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+        && request.resource.data.role in ['praktikan', 'aslab', 'asprak'];
+
+      allow delete: if false;
     }
 
-
+    // ===== laboratorium (CRUD hanya Aslab) =====
     match /laboratorium/{labId} {
       allow read: if signedIn();
-      allow create: if isAsisten()
+      allow create: if isAslab()
         && request.resource.data.keys().hasOnly([
-          'nama',
-          'kode',
-          'deskripsi',
-          'latitude',
-          'longitude',
-          'radiusMeter',
-          'createdAt',
-          'updatedAt'
+          'nama', 'kode', 'deskripsi', 'lokasi',
+          'mataKuliahKode', 'mataKuliahNama',
+          'latitude', 'longitude', 'radiusMeter',
+          'gracePeriodMenit', 'nominalDenda',
+          'aslabUid', 'asprakUids', 'praktikanUids', 'defaultKelasId',
+          'createdAt', 'updatedAt'
         ])
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
         && labValid(request.resource.data);
-      allow update: if isAsisten()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nama', 'kode', 'deskripsi', 'latitude', 'longitude', 'radiusMeter', 'updatedAt'])
+      allow update: if isAslab()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'nama', 'kode', 'deskripsi', 'lokasi',
+          'mataKuliahKode', 'mataKuliahNama',
+          'latitude', 'longitude', 'radiusMeter',
+          'gracePeriodMenit', 'nominalDenda',
+          'aslabUid', 'asprakUids', 'praktikanUids', 'defaultKelasId',
+          'updatedAt'
+        ])
         && labValid(request.resource.data);
-      allow delete: if isAsisten();
+      allow delete: if isAslab();
     }
 
+    // ===== kelas & peserta (distribusi hanya Aslab) =====
     match /kelas/{kelasId} {
-      allow read: if isAsisten() || (signedIn() && request.auth.uid in resource.data.pesertaUids);
-      allow write: if isAsisten();
+      allow read: if isAslab()
+        || isAsprakKelas(kelasId)
+        || (signedIn() && request.auth.uid in resource.data.get('pesertaUids', []));
+      allow write: if isAslab();
 
       match /peserta/{uid} {
-        allow read: if isAsisten() || (signedIn() && request.auth.uid == uid);
-        allow write: if isAsisten();
+        allow read: if isAslab()
+          || isAsprakKelas(kelasId)
+          || (signedIn() && request.auth.uid == uid);
+        allow write: if isAslab();
       }
     }
 
+    // ===== sesi & presensi =====
     match /sesi/{sesiId} {
-      allow read: if isAsisten() || isPeserta(resource.data.kelasId);
-      allow write: if isAsisten();
+      allow read: if isAslab()
+        || isAsprakSesi(resource.data.kelasId, resource.data.get('laboratoriumId', null))
+        || isPeserta(resource.data.kelasId);
+      allow create: if isAslab()
+        || isAsprakSesi(
+          request.resource.data.kelasId,
+          request.resource.data.get('laboratoriumId', null)
+        );
+      allow update, delete: if isAslab()
+        || isAsprakSesi(resource.data.kelasId, resource.data.get('laboratoriumId', null));
 
       match /presensi/{uid} {
-        allow read: if isAsisten() || (signedIn() && request.auth.uid == uid);
+        allow read: if isAslab()
+          || isAsprakSesi(
+            sesiDok(sesiId).kelasId,
+            sesiDok(sesiId).get('laboratoriumId', null)
+          )
+          || (signedIn() && request.auth.uid == uid);
+
         allow create: if signedIn() && request.auth.uid == uid
           && sesiDok(sesiId).status == 'dibuka'
           && isPeserta(sesiDok(sesiId).kelasId)
           && sesiDok(sesiId).laboratoriumId is string
-          && request.resource.data.keys().hasOnly(['uid', 'nama', 'nim', 'kelasId', 'waktu', 'laboratoriumId', 'latitude', 'longitude', 'jarakMeter', 'akurasiMeter'])
+          && !izinDiterima(sesiId, uid)
+          && request.resource.data.keys().hasOnly([
+            'uid', 'nama', 'nim', 'kelasId', 'waktu',
+            'laboratoriumId', 'latitude', 'longitude', 'jarakMeter', 'akurasiMeter',
+            'statusKehadiran', 'terlambatMenit', 'gracePeriodMenit'
+          ])
           && request.resource.data.uid == uid
           && request.resource.data.kelasId == sesiDok(sesiId).kelasId
           && request.resource.data.waktu == request.time
           && request.resource.data.laboratoriumId == sesiDok(sesiId).laboratoriumId
-          && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
-          && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
-          && request.resource.data.jarakMeter is number && request.resource.data.jarakMeter >= 0
-          && request.resource.data.akurasiMeter is number && request.resource.data.akurasiMeter >= 0
-          && dalamRadiusPresensi(sesiId, request.resource.data.latitude, request.resource.data.longitude);
+          && request.resource.data.latitude is number
+          && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+          && request.resource.data.longitude is number
+          && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+          && request.resource.data.jarakMeter is number
+          && request.resource.data.jarakMeter >= 0
+          && request.resource.data.jarakMeter <= labDok(sesiDok(sesiId).laboratoriumId).radiusMeter
+          && request.resource.data.akurasiMeter is number
+          && request.resource.data.akurasiMeter >= 0
+          && request.resource.data.akurasiMeter <= 100
+          && request.resource.data.gracePeriodMenit is number
+          && request.resource.data.gracePeriodMenit >= 0
+          && request.resource.data.terlambatMenit is number
+          && request.resource.data.terlambatMenit >= 0
+          && (
+            (request.resource.data.terlambatMenit == 0
+              && request.resource.data.statusKehadiran == 'tepat_waktu')
+            || (request.resource.data.terlambatMenit > 0
+              && request.resource.data.statusKehadiran == 'terlambat')
+          )
+          && dalamRadiusPresensi(
+            sesiId,
+            request.resource.data.latitude,
+            request.resource.data.longitude
+          );
+
+        // Presensi immutabel; koreksi hanya lewat Admin SDK.
         allow update: if false;
-        allow delete: if isAsisten();
+        allow delete: if isAslab()
+          || isAsprakSesi(
+            sesiDok(sesiId).kelasId,
+            sesiDok(sesiId).get('laboratoriumId', null)
+          );
       }
     }
 
-    // ===== SRS-03: pengajuan izin =====
+    // ===== izin (excused absence) =====
     match /izin/{izinId} {
-      function sesiDoc() {
-        return get(/databases/$(database)/documents/sesi/$(request.resource.data.sesiId)).data;
+      function sesiIzin() {
+        return sesiDok(request.resource.data.sesiId);
       }
-      allow read: if isAsisten() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow read: if isAslab()
+        || isAsprakKelas(resource.data.kelasId)
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
       allow create: if isPraktikan()
         && izinId == request.resource.data.sesiId + '_' + request.auth.uid
-        && request.resource.data.keys().hasOnly(['uid','nama','kelasId','sesiId','alasan','sentimen','status','diajukanPada'])
+        && request.resource.data.keys().hasOnly([
+          'uid', 'nama', 'kelasId', 'sesiId', 'alasan',
+          'sentimen', 'status', 'diajukanPada'
+        ])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.nama == profil().nama
         && request.resource.data.status == 'menunggu'
         && request.resource.data.diajukanPada == request.time
         && request.resource.data.alasan is string
-        && request.resource.data.alasan.size() >= 3 && request.resource.data.alasan.size() <= 500
+        && request.resource.data.alasan.size() >= 3
+        && request.resource.data.alasan.size() <= 500
         && request.resource.data.sentimen is map
-        && request.resource.data.sentimen.keys().hasOnly(['label','status','source','experimental'])
+        && request.resource.data.sentimen.keys().hasOnly(['label', 'status', 'source', 'experimental'])
         && request.resource.data.sentimen.source == 'model-edom'
         && request.resource.data.sentimen.experimental == true
-        && request.resource.data.sentimen.status in ['predicted','empty_input','unknown_vocabulary','error']
+        && request.resource.data.sentimen.status in ['predicted', 'empty_input', 'unknown_vocabulary', 'error']
         && (!('label' in request.resource.data.sentimen)
             || request.resource.data.sentimen.label == null
-            || request.resource.data.sentimen.label in ['negatif','netral','positif'])
-        && sesiDoc().status != 'ditutup'
-        && request.resource.data.kelasId == sesiDoc().kelasId
-        && isPeserta(sesiDoc().kelasId)
-        && !exists(/databases/$(database)/documents/sesi/$(request.resource.data.sesiId)/presensi/$(request.auth.uid));
-      allow update: if isAsisten()
+            || request.resource.data.sentimen.label in ['negatif', 'netral', 'positif'])
+        && sesiIzin().status != 'ditutup'
+        && request.resource.data.kelasId == sesiIzin().kelasId
+        && isPeserta(sesiIzin().kelasId)
+        && !exists(
+          /databases/$(database)/documents/sesi/$(request.resource.data.sesiId)/presensi/$(request.auth.uid)
+        );
+
+      allow update: if (isAslab() || isAsprakKelas(resource.data.kelasId))
         && resource.data.status == 'menunggu'
-        && request.resource.data.status in ['diterima','ditolak']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','diputuskanOleh','diputuskanPada'])
+        && request.resource.data.status in ['diterima', 'ditolak']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'excusedAbsence', 'bebasDenda', 'diputuskanOleh', 'diputuskanPada'
+        ])
         && request.resource.data.diputuskanOleh == request.auth.uid
-        && request.resource.data.diputuskanPada == request.time;
+        && request.resource.data.diputuskanPada == request.time
+        && (
+          (request.resource.data.status == 'diterima'
+            && request.resource.data.excusedAbsence == true
+            && request.resource.data.bebasDenda == true)
+          || (request.resource.data.status == 'ditolak'
+            && request.resource.data.excusedAbsence == false
+            && request.resource.data.bebasDenda == false)
+        );
+
       allow delete: if false;
+    }
+
+    // ===== tagihan denda (1:1, dibuat klien saat presensi terlambat) =====
+    match /tagihan/{tagihanId} {
+      allow read: if isAslab()
+        || (signedIn() && resource.data.uid == request.auth.uid)
+        || isAsprakSesi(
+          resource.data.kelasId,
+          resource.data.get('laboratoriumId', null)
+        );
+
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.uid
+        && tagihanId == request.resource.data.sesiId + '_' + request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'id', 'uid', 'nama', 'nim', 'sesiId', 'namaPraktikum',
+          'tanggalSesi', 'laboratoriumId', 'namaLab', 'kelasId',
+          'presensiUid', 'waktuPresensi', 'terlambatMenit', 'nominal',
+          'statusPembayaran', 'lastOrderId', 'dibuatPada', 'dibayarPada', 'updatedAt'
+        ])
+        && request.resource.data.id == tagihanId
+        && request.resource.data.presensiUid == request.auth.uid
+        && request.resource.data.statusPembayaran == 'unpaid'
+        && request.resource.data.lastOrderId == null
+        && request.resource.data.dibayarPada == null
+        && request.resource.data.dibuatPada == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.kelasId == sesiDok(request.resource.data.sesiId).kelasId
+        && request.resource.data.laboratoriumId == sesiDok(request.resource.data.sesiId).laboratoriumId
+        && request.resource.data.nominal == sesiDok(request.resource.data.sesiId).nominalDenda
+        && request.resource.data.nominal is number
+        && request.resource.data.nominal >= 0
+        && request.resource.data.terlambatMenit is number
+        && request.resource.data.terlambatMenit > 0;
+
+      // Status pembayaran hanya boleh diubah backend (Admin SDK) setelah webhook sah.
+      allow update, delete: if false;
+    }
+
+    // ===== transaksi pembayaran (100% dikelola backend) =====
+    match /transaksi/{orderId} {
+      allow read: if isAslab()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
     }
   }
 }
