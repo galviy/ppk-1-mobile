@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
-import { Href, useRouter, useSegments } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { Href, usePathname, useRouter, useSegments } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 
-import { useAuth } from '@/context/AuthContext';
-import { DeviceConditionType } from '@/lib/device-errors';
+import { useAuth } from '../context/AuthContext';
+import { normalizeRole } from '../data/types';
+import { DeviceConditionType } from '../lib/device-errors';
 import {
   configureForegroundNotifications,
   extractNotificationData,
   PushRegistrationStatus,
+  resolveAppDeepLinkRoute,
   resolveNotificationRoute,
   syncUserPushToken,
-} from '@/services/notifications';
+} from '../services/notifications';
 
 export interface UseNotificationsResult {
   pushToken: string | null;
@@ -36,6 +39,7 @@ export function useNotifications(): UseNotificationsResult {
   const savedPushToken = user?.expoPushToken ?? null;
 
   const router = useRouter();
+  const pathname = usePathname();
   const segments = useSegments();
 
   const [pushToken, setPushToken] = useState<string | null>(savedPushToken);
@@ -193,6 +197,38 @@ export function useNotifications(): UseNotificationsResult {
     };
   }, [handleNotificationResponse]);
 
+  // FR-S4-01.7: Tangani deep link return dari browser Midtrans (ppk1://pembayaran/[tagihanId])
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    let mounted = true;
+    void Linking.getInitialURL()
+      .then((initialUrl) => {
+        if (!mounted || !initialUrl) return;
+        const targetRoute = resolveAppDeepLinkRoute(initialUrl);
+        if (targetRoute) {
+          setPendingRoute(targetRoute);
+        }
+      })
+      .catch((err) => {
+        console.warn('Gagal memeriksa initial deep link URL:', err);
+      });
+
+    const urlSubscription = Linking.addEventListener('url', ({ url }) => {
+      const targetRoute = resolveAppDeepLinkRoute(url);
+      if (targetRoute) {
+        setPendingRoute(targetRoute);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      urlSubscription.remove();
+    };
+  }, []);
+
   // Eksekusi navigasi ke pendingRoute setelah pengguna terautentikasi dan berada di luar layar splash/auth
   useEffect(() => {
     if (!pendingRoute || isAuthLoading || !user) {
@@ -211,13 +247,21 @@ export function useNotifications(): UseNotificationsResult {
     }
 
     const routeToOpen = pendingRoute;
+    const canonicalRole = normalizeRole(user.role);
     const timer = setTimeout(() => {
       setPendingRoute((current) => (current === routeToOpen ? null : current));
+      // FR-S4-01.4 & 01.7: Halaman pembayaran hanya dibuka praktikan terautentikasi
+      if (routeToOpen.startsWith('/pembayaran/') && canonicalRole !== 'praktikan') {
+        return;
+      }
+      if (pathname === routeToOpen) {
+        return;
+      }
       router.push(routeToOpen as Href);
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [pendingRoute, isAuthLoading, user, segments, router]);
+  }, [pendingRoute, isAuthLoading, user, segments, pathname, router]);
 
   return {
     pushToken: uid ? (pushToken ?? savedPushToken) : null,

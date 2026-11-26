@@ -3,13 +3,13 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { PushNotificationPayload } from '@/data/types';
+import { PushNotificationPayload } from '../data/types';
 import {
   classifyDeviceError,
   DeviceConditionType,
   isOfflineError,
-} from '@/lib/device-errors';
-import { updateUserPushToken } from '@/services/userService';
+} from '../lib/device-errors';
+import { updateUserPushToken } from './userService';
 
 export const DEFAULT_NOTIFICATION_CHANNEL_ID = 'default';
 
@@ -257,40 +257,8 @@ export function extractNotificationData(
   return dataRecord;
 }
 
-/**
- * Menerjemahkan payload notifikasi menjadi rute Expo Router sesuai kontrak Bagian 6 (S3-01.5):
- * - { event: 'sesi_dibuka', sesiId, kelasId } -> /presensi/{sesiId}
- * - { event: 'jadwal_berubah', sesiId, kelasId } -> /sesi/{sesiId}
- * - { event: 'izin_diputuskan', izinId, status } -> /izin/{izinId}
- */
-export function resolveNotificationRoute(
-  data: Record<string, unknown> | PushNotificationPayload | null | undefined
-): string | null {
-  if (!data || typeof data !== 'object') {
-    return null;
-  }
-
-  const payload = data as Record<string, unknown>;
-  const event = typeof payload.event === 'string' ? payload.event.trim() : '';
-  const sesiId =
-    typeof payload.sesiId === 'string' ? payload.sesiId.trim() : '';
-  const izinId =
-    typeof payload.izinId === 'string' ? payload.izinId.trim() : '';
-
-  switch (event) {
-    case 'sesi_dibuka':
-      return sesiId ? `/presensi/${sesiId}` : null;
-    case 'jadwal_berubah':
-      return sesiId ? `/sesi/${sesiId}` : null;
-    case 'izin_diputuskan':
-      return izinId ? `/izin/${izinId}` : null;
-    default:
-      if (typeof payload.route === 'string' && payload.route.startsWith('/')) {
-        return payload.route;
-      }
-      if (typeof payload.url === 'string' && payload.url.startsWith('/')) {
-        return payload.url;
-      }
-      return null;
-  }
-}
+export {
+  resolveAppDeepLinkRoute,
+  resolveNotificationRoute,
+} from '../lib/notification-route';
+export type { PushNotificationPayload };
