@@ -28,6 +28,8 @@ export type Izin = {
   diajukanPada: Date | null;
   diputuskanOleh: string | null;
   diputuskanPada: Date | null;
+  excusedAbsence?: boolean;
+  bebasDenda?: boolean;
 };
 
 export const STATUS_IZIN_LABEL: Record<StatusIzin, string> = {
