@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { PrimaryButton } from '@/components/ui/primary-button';
-import { useTheme } from '@/hooks/use-theme';
+import { ThemedText } from './themed-text';
+import { PrimaryButton } from './ui/primary-button';
+import { Radius } from '../constants/theme';
+import { useTheme } from '../hooks/use-theme';
 
 type Props = {
   visible: boolean;
@@ -89,6 +90,7 @@ export function FormSheet({
         style={[
           styles.overlay,
           {
+            backgroundColor: theme.overlay,
             paddingTop: insets.top + 12,
             paddingBottom: kb > 0 ? kb : Math.max(16, insets.bottom),
           },
@@ -97,7 +99,8 @@ export function FormSheet({
           style={[
             styles.sheet,
             {
-              backgroundColor: theme.background,
+              backgroundColor: theme.surface,
+              borderTopColor: theme.borderSubtle,
               maxHeight: sheetMaxHeight,
               paddingBottom: 16,
             },
@@ -113,7 +116,11 @@ export function FormSheet({
             showsVerticalScrollIndicator
             contentContainerStyle={styles.body}>
             {children}
-            {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
+            {error ? (
+              <ThemedText style={[styles.error, { color: theme.dangerText }]}>
+                {error}
+              </ThemedText>
+            ) : null}
           </ScrollView>
 
           <View style={styles.row}>
@@ -140,12 +147,12 @@ export function FormSheet({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    borderTopWidth: 1,
     paddingHorizontal: 20,
     paddingTop: 18,
     gap: 10,
@@ -161,7 +168,6 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   error: {
-    color: '#DC2626',
     fontSize: 13,
   },
   row: {

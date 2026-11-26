@@ -7,7 +7,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { useTheme } from '@/hooks/use-theme';
+import { Elevation, Radius, Spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/use-theme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -27,7 +28,7 @@ export function Card({ children, style, onPress, selected }: CardProps) {
           backgroundColor: selected
             ? theme.backgroundSelected
             : theme.backgroundElement,
-          borderColor: selected ? '#2563EB' : 'transparent',
+          borderColor: selected ? theme.primary : theme.borderSubtle,
           borderWidth: selected ? 2 : 1,
         },
         style,
@@ -54,14 +55,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: Radius.lg,
+    padding: Spacing.three,
     marginVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...Elevation.sm,
   },
   pressed: {
     opacity: 0.85,

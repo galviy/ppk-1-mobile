@@ -4,17 +4,24 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedView } from '@/components/themed-view';
-import { RoleHeader } from '@/components/ui/role-header';
-import { useAuth } from '@/context/AuthContext';
-import type { Profil } from '@/data/models';
+import { ThemedView } from './themed-view';
+import { RoleHeader } from './ui/role-header';
+import { useAuth } from '../context/AuthContext';
+import type { Profil } from '../data/models';
+import { normalizeRole } from '../data/types';
 
 type Props = { children: React.ReactNode | ((profil: Profil) => React.ReactNode) };
 
 export function ScreenShell({ children }: Props) {
   const { user } = useAuth();
   const profil: Profil | null = user
-    ? { uid: user.uid, nama: user.nama, nim: user.nim, role: user.role }
+    ? {
+        uid: user.uid,
+        nama: user.nama,
+        nim: user.nim,
+        role: normalizeRole(user.role) ?? 'praktikan',
+        ...(user.mataKuliahKode ? { mataKuliahKode: user.mataKuliahKode } : {}),
+      }
     : null;
 
   return (

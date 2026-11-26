@@ -7,7 +7,10 @@ import {
   ViewStyle,
 } from 'react-native';
 
-interface PrimaryButtonProps {
+import { Radius } from '../../constants/theme';
+import { useTheme } from '../../hooks/use-theme';
+
+export interface PrimaryButtonProps {
   label: string;
   onPress: () => void;
   disabled?: boolean;
@@ -22,32 +25,55 @@ export function PrimaryButton({
   variant = 'primary',
   style,
 }: PrimaryButtonProps) {
-  let buttonStyle = styles.primary;
-  let textStyle = styles.textPrimary;
+  const theme = useTheme();
+
+  let buttonColorStyle: ViewStyle = {
+    backgroundColor: theme.primary,
+  };
+  let textColor: string = theme.onPrimary;
 
   if (variant === 'secondary') {
-    buttonStyle = styles.secondary;
-    textStyle = styles.textSecondary;
+    buttonColorStyle = {
+      backgroundColor: theme.secondaryBg,
+      borderWidth: 1,
+      borderColor: theme.secondaryBorder,
+    };
+    textColor = theme.secondaryText;
   } else if (variant === 'danger') {
-    buttonStyle = styles.danger;
-    textStyle = styles.textDanger;
+    buttonColorStyle = {
+      backgroundColor: theme.danger,
+    };
+    textColor = theme.onPrimary;
   } else if (variant === 'outline') {
-    buttonStyle = styles.outline;
-    textStyle = styles.textOutline;
+    buttonColorStyle = {
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: theme.primary,
+    };
+    textColor = theme.primaryText;
   }
 
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
       style={({ pressed }) => [
         styles.base,
-        buttonStyle,
-        disabled && styles.disabled,
+        buttonColorStyle,
+        disabled && {
+          backgroundColor: theme.neutralBg,
+          borderColor: theme.neutralBorder,
+          opacity: 0.7,
+        },
         pressed && !disabled && styles.pressed,
         style,
       ]}>
-      <Text style={[styles.baseText, textStyle, disabled && styles.textDisabled]}>
+      <Text
+        style={[
+          styles.baseText,
+          { color: disabled ? theme.neutralText : textColor },
+        ]}>
         {label}
       </Text>
     </Pressable>
@@ -58,7 +84,7 @@ const styles = StyleSheet.create({
   base: {
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: Radius.lg - 4,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -67,40 +93,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.2,
-  },
-  primary: {
-    backgroundColor: '#2563EB',
-  },
-  textPrimary: {
-    color: '#FFFFFF',
-  },
-  secondary: {
-    backgroundColor: '#F1F5F9',
-  },
-  textSecondary: {
-    color: '#0F172A',
-  },
-  danger: {
-    backgroundColor: '#EF4444',
-  },
-  textDanger: {
-    color: '#FFFFFF',
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#2563EB',
-  },
-  textOutline: {
-    color: '#2563EB',
-  },
-  disabled: {
-    backgroundColor: '#E2E8F0',
-    borderColor: 'transparent',
-    opacity: 0.6,
-  },
-  textDisabled: {
-    color: '#94A3B8',
   },
   pressed: {
     opacity: 0.85,

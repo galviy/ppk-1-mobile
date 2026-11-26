@@ -34,6 +34,20 @@ export const Colors = {
     neutralBg: '#F3F4F6',
     neutralBorder: '#D1D5DB',
     neutralText: '#374151',
+    primary: '#1D4ED8',
+    onPrimary: '#FFFFFF',
+    primaryBg: '#EFF6FF',
+    primaryBorder: '#BFDBFE',
+    primaryText: '#1E40AF',
+    secondary: '#475569',
+    secondaryBg: '#F1F5F9',
+    secondaryBorder: '#CBD5E1',
+    secondaryText: '#1E293B',
+    surface: '#FFFFFF',
+    border: '#CBD5E1',
+    borderSubtle: '#E2E8F0',
+    textMuted: '#64748B',
+    overlay: 'rgba(15, 23, 42, 0.5)',
   },
   dark: {
     text: '#ffffff',
@@ -61,6 +75,20 @@ export const Colors = {
     neutralBg: '#1F2937',
     neutralBorder: '#4B5563',
     neutralText: '#E5E7EB',
+    primary: '#2563EB',
+    onPrimary: '#FFFFFF',
+    primaryBg: '#172554',
+    primaryBorder: '#1E40AF',
+    primaryText: '#93C5FD',
+    secondary: '#94A3B8',
+    secondaryBg: '#272A30',
+    secondaryBorder: '#3F444E',
+    secondaryText: '#F1F5F9',
+    surface: '#16171A',
+    border: '#3F444E',
+    borderSubtle: '#2E3135',
+    textMuted: '#9CA3AF',
+    overlay: 'rgba(0, 0, 0, 0.7)',
   },
 } as const;
 
@@ -100,6 +128,56 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+export const Radius = {
+  sm: 8,
+  md: 10,
+  lg: 16,
+  xl: 20,
+  full: 999,
+} as const;
+
+export const Typography = {
+  display: { fontSize: 32, lineHeight: 40, fontWeight: '700' as const },
+  title: { fontSize: 24, lineHeight: 32, fontWeight: '700' as const },
+  subtitle: { fontSize: 20, lineHeight: 28, fontWeight: '600' as const },
+  heading: { fontSize: 16, lineHeight: 22, fontWeight: '600' as const },
+  body: { fontSize: 15, lineHeight: 22, fontWeight: '400' as const },
+  bodySmall: { fontSize: 13, lineHeight: 18, fontWeight: '400' as const },
+  caption: { fontSize: 12, lineHeight: 16, fontWeight: '500' as const },
+  label: { fontSize: 14, lineHeight: 20, fontWeight: '600' as const },
+} as const;
+
+export const Elevation = {
+  none: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  sm: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  md: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  lg: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 8,
+  },
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

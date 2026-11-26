@@ -1,11 +1,16 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ConfirmModal } from '@/components/ui/confirm-modal';
-import { useAuth } from '@/context/AuthContext';
-import { useApp } from '@/data/store';
-import { useTheme } from '@/hooks/use-theme';
+import { ThemedText } from '../themed-text';
+import { ConfirmModal } from './confirm-modal';
+import { Radius, Spacing, Typography } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
+import { useApp } from '../../data/store';
+import { CanonicalRole, normalizeRole } from '../../data/types';
+import { useTheme } from '../../hooks/use-theme';
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export function RoleHeader() {
   const { user, logout } = useAuth();
@@ -14,17 +19,47 @@ export function RoleHeader() {
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
 
   const namaTampil = user?.nama || identitas?.nama || 'Pengguna';
-  const roleAktif = user?.role || role || 'praktikan';
+  const roleAktif: CanonicalRole = normalizeRole(user?.role ?? role) ?? 'praktikan';
   const kelasAktif = user?.kelas || identitas?.kelas;
   const nimAktif = user?.nim;
+  const nipAktif = user?.nip;
+  const mkAktif = user?.mataKuliahKode;
 
   let roleLabel = '';
-  if (roleAktif === 'praktikan') {
+  let badgeTitle = '';
+  let roleIcon: IconName = 'person-outline';
+  let badgeColors: { bg: string; border: string; text: string } = {
+    bg: theme.primaryBg,
+    border: theme.primaryBorder,
+    text: theme.primaryText,
+  };
+
+  if (roleAktif === 'aslab') {
+    badgeTitle = 'Aslab';
+    roleIcon = 'flask-outline';
+    roleLabel = `Asisten Laboratorium${mkAktif ? ` • ${mkAktif}` : ''}${
+      nipAktif ? ` (${nipAktif})` : ''
+    }`;
+    badgeColors = {
+      bg: theme.infoBg,
+      border: theme.infoBorder,
+      text: theme.infoText,
+    };
+  } else if (roleAktif === 'asprak') {
+    badgeTitle = 'Asprak';
+    roleIcon = 'clipboard-outline';
+    roleLabel = `Asisten Praktikum${nipAktif ? ` (${nipAktif})` : ''}`;
+    badgeColors = {
+      bg: theme.warningBg,
+      border: theme.warningBorder,
+      text: theme.warningText,
+    };
+  } else {
+    badgeTitle = 'Praktikan';
+    roleIcon = 'person-outline';
     roleLabel = `Praktikan${kelasAktif ? ` • Kelas ${kelasAktif}` : ''}${
       nimAktif ? ` (${nimAktif})` : ''
     }`;
-  } else {
-    roleLabel = 'Asisten Laboratorium';
   }
 
   const handleLogout = async () => {
@@ -43,29 +78,52 @@ export function RoleHeader() {
           styles.container,
           {
             backgroundColor: theme.backgroundElement,
-            borderBottomColor: theme.backgroundSelected,
+            borderBottomColor: theme.borderSubtle,
           },
         ]}>
         <View style={styles.infoContainer}>
           <View style={styles.nameRow}>
-            <Text style={styles.userIcon}>
-              {roleAktif === 'praktikan' ? '🎓' : '👨‍🏫'}
-            </Text>
+            <View
+              style={[
+                styles.roleBadge,
+                {
+                  backgroundColor: badgeColors.bg,
+                  borderColor: badgeColors.border,
+                },
+              ]}>
+              <Ionicons name={roleIcon} size={13} color={badgeColors.text} />
+              <Text style={[styles.roleBadgeText, { color: badgeColors.text }]}>
+                {badgeTitle}
+              </Text>
+            </View>
             <ThemedText type="smallBold" style={styles.userName} numberOfLines={1}>
               {namaTampil}
             </ThemedText>
           </View>
-          <Text style={styles.roleTag}>{roleLabel}</Text>
+          <Text
+            style={[styles.roleTag, { color: theme.textSecondary }]}
+            numberOfLines={1}>
+            {roleLabel}
+          </Text>
         </View>
 
         {/* Tombol Logout (FR-01.3) */}
         <Pressable
           onPress={() => setShowConfirmModal(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Keluar dari akun"
           style={({ pressed }) => [
             styles.logoutBtn,
+            {
+              backgroundColor: theme.dangerBg,
+              borderColor: theme.dangerBorder,
+            },
             pressed && styles.logoutBtnPressed,
           ]}>
-          <Text style={styles.logoutBtnText}>Keluar 🚪</Text>
+          <Ionicons name="log-out-outline" size={14} color={theme.dangerText} />
+          <Text style={[styles.logoutBtnText, { color: theme.dangerText }]}>
+            Keluar
+          </Text>
         </Pressable>
       </View>
 
@@ -88,46 +146,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: Spacing.three,
     paddingVertical: 12,
     borderBottomWidth: 1,
   },
   infoContainer: {
     flex: 1,
     marginRight: 12,
+    gap: 3,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Spacing.two,
   },
-  userIcon: {
-    fontSize: 16,
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+  },
+  roleBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   userName: {
     fontSize: 15,
     flexShrink: 1,
   },
   roleTag: {
-    fontSize: 12,
-    color: '#2563EB',
-    fontWeight: '600',
-    marginTop: 2,
+    ...Typography.caption,
   },
   logoutBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: '#FECACA',
   },
   logoutBtnPressed: {
-    opacity: 0.7,
+    opacity: 0.75,
   },
   logoutBtnText: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#DC2626',
   },
 });
