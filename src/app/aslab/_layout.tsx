@@ -74,8 +74,23 @@ export default function AslabTabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="kelas"
+        options={{
+          title: 'Kelas Praktikum',
+          tabBarLabel: 'Kelas',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'school' : 'school-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
       {/* Layar pendukung Aslab (SRS-S4-03): tidak tampil sebagai tab */}
       <Tabs.Screen name="bulk-insert" options={{ href: null }} />
+      <Tabs.Screen name="peserta/[kelasId]" options={{ href: null }} />
     </Tabs>
   );
 }
