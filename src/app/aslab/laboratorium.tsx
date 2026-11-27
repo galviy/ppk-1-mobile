@@ -30,7 +30,7 @@ const FORM_KOSONG: FormState = {
   radiusMeter: '100'
 };
 
-export default function AsistenLaboratoriumScreen() {
+export default function AslabLaboratoriumScreen() {
   return <ScreenShell>{() => <Isi />}</ScreenShell>;
 }
 

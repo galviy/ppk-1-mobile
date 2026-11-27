@@ -20,6 +20,7 @@ import { useIzinDetail } from '@/hooks/use-izin';
 import { useKelasDetail, useSesiDetail } from '@/hooks/use-praktikum';
 import { jamMenit, tanggalDariIso, tanggalPendek } from '@/lib/format';
 import { pesanErrorIzin, putuskanIzin } from '@/services/izin';
+import { isAsprakRole } from '../../data/types';
 
 function Baris({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -141,7 +142,7 @@ function Isi({ profil }: { profil: Profil }) {
 
           <SentimentResultBox sentiment={data.sentimen} />
 
-          {profil.role === 'asisten' ? (
+          {isAsprakRole(profil.role) ? (
             <View style={styles.actionSection}>
               {data.status === 'menunggu' ? (
                 <View style={styles.actionRow}>

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   KeyboardTypeOptions,
@@ -7,7 +8,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useTheme } from '@/hooks/use-theme';
+
+import { Radius, Spacing, Typography } from '../../constants/theme';
+import { useTheme } from '../../hooks/use-theme';
 
 export interface InputFieldProps {
   label: string;
@@ -44,7 +47,10 @@ export function InputField({
     <View style={styles.container}>
       <View style={styles.labelRow}>
         <Text style={[styles.label, { color: theme.text }]}>
-          {label} {required && <Text style={styles.requiredAsterisk}>*</Text>}
+          {label}{' '}
+          {required && (
+            <Text style={{ color: theme.danger }}>*</Text>
+          )}
         </Text>
       </View>
 
@@ -52,25 +58,25 @@ export function InputField({
         style={[
           styles.inputContainer,
           {
-            backgroundColor: disabled ? '#F3F4F6' : theme.backgroundElement,
+            backgroundColor: disabled ? theme.neutralBg : theme.backgroundElement,
             borderColor: error
-              ? '#EF4444'
+              ? theme.danger
               : isFocused
-              ? '#2563EB'
-              : '#E2E8F0',
+              ? theme.primary
+              : theme.border,
           },
         ]}>
         <TextInput
           style={[
             styles.input,
             {
-              color: theme.text,
+              color: disabled ? theme.neutralText : theme.text,
             },
           ]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={theme.textMuted}
           secureTextEntry={secureTextEntry && !showPassword}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
@@ -83,17 +89,27 @@ export function InputField({
         {secureTextEntry && (
           <Pressable
             onPress={() => setShowPassword((prev) => !prev)}
+            accessibilityRole="button"
+            accessibilityLabel={
+              showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'
+            }
             style={styles.eyeButton}
             hitSlop={8}>
-            <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={theme.textSecondary}
+            />
           </Pressable>
         )}
       </View>
 
       {error ? (
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={[styles.errorText, { color: theme.dangerText }]}>{error}</Text>
       ) : helperText ? (
-        <Text style={styles.helperText}>{helperText}</Text>
+        <Text style={[styles.helperText, { color: theme.textSecondary }]}>
+          {helperText}
+        </Text>
       ) : null}
     </View>
   );
@@ -101,7 +117,7 @@ export function InputField({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: Spacing.three,
     width: '100%',
   },
   labelRow: {
@@ -109,17 +125,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  requiredAsterisk: {
-    color: '#EF4444',
+    ...Typography.label,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
     minHeight: 48,
   },
@@ -132,18 +144,13 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingVertical: 4,
   },
-  eyeIcon: {
-    fontSize: 16,
-  },
   errorText: {
-    color: '#EF4444',
-    fontSize: 12,
+    ...Typography.caption,
     marginTop: 4,
     marginLeft: 2,
   },
   helperText: {
-    color: '#64748B',
-    fontSize: 12,
+    ...Typography.caption,
     marginTop: 4,
     marginLeft: 2,
   },

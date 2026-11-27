@@ -1,7 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import React from 'react';
 
-import { useTheme } from '@/hooks/use-theme';
+import { useTheme } from '../../hooks/use-theme';
 
 export default function PraktikanTabsLayout() {
   const theme = useTheme();
@@ -12,9 +13,9 @@ export default function PraktikanTabsLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.background,
-          borderTopColor: theme.backgroundSelected,
+          borderTopColor: theme.borderSubtle,
         },
-        tabBarActiveTintColor: '#2563EB',
+        tabBarActiveTintColor: theme.primaryText,
         tabBarInactiveTintColor: theme.textSecondary,
       }}>
       <Tabs.Screen
@@ -22,15 +23,27 @@ export default function PraktikanTabsLayout() {
         options={{
           title: 'Jadwal Sesi',
           tabBarLabel: 'Jadwal',
-          tabBarIcon: () => <Text style={{ fontSize: 18 }}>📅</Text>,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'calendar' : 'calendar-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="maps"
         options={{
           title: 'Peta Laboratorium',
-          tabBarLabel: 'Maps',
-          tabBarIcon: () => <Text style={{ fontSize: 18 }}>🗺️</Text>,
+          tabBarLabel: 'Peta',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'map' : 'map-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -38,7 +51,13 @@ export default function PraktikanTabsLayout() {
         options={{
           title: 'Riwayat Presensi',
           tabBarLabel: 'Riwayat',
-          tabBarIcon: () => <Text style={{ fontSize: 18 }}>📝</Text>,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'time' : 'time-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -46,7 +65,13 @@ export default function PraktikanTabsLayout() {
         options={{
           title: 'Pengajuan Izin',
           tabBarLabel: 'Izin',
-          tabBarIcon: () => <Text style={{ fontSize: 18 }}>✉️</Text>,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'document-text' : 'document-text-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
     </Tabs>

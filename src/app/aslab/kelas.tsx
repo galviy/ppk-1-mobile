@@ -95,7 +95,7 @@ function Isi() {
               <ThemedText themeColor="textSecondary" style={styles.small}>{item.pesertaUids.length} peserta</ThemedText>
               <PrimaryButton
                 label="Kelola Peserta"
-                onPress={() => router.push({ pathname: '/asisten/peserta/[kelasId]', params: { kelasId: item.id } })}
+                onPress={() => router.push({ pathname: '/aslab/peserta/[kelasId]', params: { kelasId: item.id } })}
               />
               <View style={styles.row}>
                 <PrimaryButton label="Ubah" variant="outline" style={styles.smallBtn}

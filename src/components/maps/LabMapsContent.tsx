@@ -15,7 +15,7 @@ import type { SesiAktivitas } from '@/lib/lab-activity';
 import { getAktivitasLab } from '@/lib/lab-activity';
 
 import LabMapView from '@/components/maps/LabMapView';
-import { useRouter } from 'expo-router';
+import { Href, useRouter } from 'expo-router';
 
 type LabMapsContentProps = {
   sesi: SesiAktivitas[];
@@ -101,7 +101,7 @@ export default function LabMapsContent({
       {canManageLabs && (
         <Pressable
           style={styles.secondaryButton}
-          onPress={() => router.push('/asisten/laboratorium')}
+          onPress={() => router.push('/aslab/laboratorium' as Href)}
         >
           <Text style={styles.buttonText}>
             Kelola Laboratorium

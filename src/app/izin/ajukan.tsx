@@ -1,5 +1,5 @@
 // Layar formulir pengajuan izin praktikan (SRS-03: FR-03.1 s.d. FR-03.10).
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Href, Redirect, router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -15,6 +15,7 @@ import type { Profil } from '@/data/models';
 import { useIzinSaya } from '@/hooks/use-izin';
 import { useJadwalPraktikan, usePresensiSaya } from '@/hooks/use-praktikum';
 import { ajukanIzin, pesanErrorIzin } from '@/services/izin';
+import { getHomeRouteForRole } from '../../lib/role-routing';
 
 export default function AjukanIzinScreen() {
   const { user, isLoading } = useAuth();
@@ -45,7 +46,7 @@ function Isi({ profil }: { profil: Profil }) {
   );
 
   if (profil.role !== 'praktikan') {
-    return <Redirect href="/asisten" />;
+    return <Redirect href={getHomeRouteForRole(profil.role) as Href} />;
   }
 
   const handleSubmit = async (input: InputIzin) => {

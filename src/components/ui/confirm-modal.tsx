@@ -7,7 +7,8 @@ import {
   View,
 } from 'react-native';
 
-import { useTheme } from '@/hooks/use-theme';
+import { Elevation, Radius, Spacing, Typography } from '../../constants/theme';
+import { useTheme } from '../../hooks/use-theme';
 
 export interface ConfirmModalProps {
   visible: boolean;
@@ -38,11 +39,14 @@ export function ConfirmModal({
       visible={visible}
       animationType="fade"
       onRequestClose={onCancel}>
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { backgroundColor: theme.overlay }]}>
         <View
           style={[
             styles.modalContainer,
-            { backgroundColor: theme.background },
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.borderSubtle,
+            },
           ]}>
           <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
           <Text style={[styles.message, { color: theme.textSecondary }]}>
@@ -52,22 +56,35 @@ export function ConfirmModal({
           <View style={styles.buttonRow}>
             <Pressable
               onPress={onCancel}
+              accessibilityRole="button"
               style={({ pressed }) => [
                 styles.button,
-                styles.cancelButton,
+                {
+                  backgroundColor: theme.secondaryBg,
+                  borderWidth: 1,
+                  borderColor: theme.secondaryBorder,
+                },
                 pressed && styles.buttonPressed,
               ]}>
-              <Text style={styles.cancelText}>{cancelLabel}</Text>
+              <Text style={[styles.cancelText, { color: theme.secondaryText }]}>
+                {cancelLabel}
+              </Text>
             </Pressable>
 
             <Pressable
               onPress={onConfirm}
+              accessibilityRole="button"
               style={({ pressed }) => [
                 styles.button,
-                variant === 'danger' ? styles.dangerButton : styles.confirmButton,
+                {
+                  backgroundColor:
+                    variant === 'danger' ? theme.danger : theme.primary,
+                },
                 pressed && styles.buttonPressed,
               ]}>
-              <Text style={styles.confirmText}>{confirmLabel}</Text>
+              <Text style={[styles.confirmText, { color: theme.onPrimary }]}>
+                {confirmLabel}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -79,29 +96,26 @@ export function ConfirmModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: Spacing.four,
   },
   modalContainer: {
     width: '100%',
     maxWidth: 380,
-    borderRadius: 20,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    ...Elevation.lg,
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: Spacing.two,
     textAlign: 'center',
   },
   message: {
+    ...Typography.bodySmall,
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
@@ -115,30 +129,17 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonPressed: {
     opacity: 0.8,
   },
-  cancelButton: {
-    backgroundColor: '#F1F5F9',
-  },
   cancelText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  confirmButton: {
-    backgroundColor: '#2563EB',
-  },
-  dangerButton: {
-    backgroundColor: '#DC2626',
+    ...Typography.label,
   },
   confirmText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...Typography.label,
   },
 });

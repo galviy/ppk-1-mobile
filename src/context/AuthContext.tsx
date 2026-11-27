@@ -1,10 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/config/firebase';
-import { RegisterPayload, UserProfile } from '@/data/types';
-import { loginUser, logoutUser, registerUser } from '@/services/authService';
-import { clearUserPushToken } from '@/services/notifications';
-import { getUserProfile } from '@/services/userService';
+import { auth } from '../config/firebase';
+import { normalizeRole, RegisterPayload, UserProfile } from '../data/types';
+import { loginUser, logoutUser, registerUser } from '../services/authService';
+import { clearUserPushToken } from '../services/notifications';
+import { getUserProfile } from '../services/userService';
+
+function withNormalizedRole(profile: UserProfile): UserProfile {
+  return {
+    ...profile,
+    role: normalizeRole(profile.role) ?? 'praktikan',
+  };
+}
 
 export interface AuthContextType {
   user: UserProfile | null;
@@ -29,10 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFirebaseUser(fbUser);
       if (fbUser) {
         try {
-          // Ambil profil dan peran pengguna dari Firestore (FR-01.7)
+          // Ambil profil dan peran pengguna dari Firestore (FR-01.7, FR-S4-01.3)
           const profile = await getUserProfile(fbUser.uid);
           if (profile) {
-            setUser(profile);
+            setUser(withNormalizedRole(profile));
           } else {
             // Jika akun ada di Auth tapi profil Firestore belum lengkap
             const fallbackProfile: UserProfile = {
@@ -60,9 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const { user: fbUser, profile } = await loginUser(email, password);
+      const normalized = withNormalizedRole(profile);
       setFirebaseUser(fbUser);
-      setUser(profile);
-      return profile;
+      setUser(normalized);
+      return normalized;
     } finally {
       setIsLoading(false);
     }
@@ -72,9 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const { user: fbUser, profile } = await registerUser(payload);
+      const normalized = withNormalizedRole(profile);
       setFirebaseUser(fbUser);
-      setUser(profile);
-      return profile;
+      setUser(normalized);
+      return normalized;
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +109,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await getUserProfile(firebaseUser.uid);
       if (profile) {
-        setUser(profile);
+        const normalized = withNormalizedRole(profile);
+        setUser(normalized);
+        return normalized;
       }
       return profile;
     } catch (err) {

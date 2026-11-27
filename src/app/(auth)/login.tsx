@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,17 +10,19 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { Href, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Card } from '@/components/ui/card';
-import { InputField } from '@/components/ui/input-field';
-import { PrimaryButton } from '@/components/ui/primary-button';
-import { Spacing } from '@/constants/theme';
-import { useAuth } from '@/context/AuthContext';
-import { getAuthErrorMessage } from '@/services/authService';
+import { ThemedText } from '../../components/themed-text';
+import { ThemedView } from '../../components/themed-view';
+import { Card } from '../../components/ui/card';
+import { InputField } from '../../components/ui/input-field';
+import { PrimaryButton } from '../../components/ui/primary-button';
+import { Radius, Spacing, Typography } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../hooks/use-theme';
+import { getHomeRouteForRole } from '../../lib/role-routing';
+import { getAuthErrorMessage } from '../../services/authService';
 
 function useKeyboardHeight() {
   const [tinggi, setTinggi] = useState(0);
@@ -46,6 +49,7 @@ function useKeyboardHeight() {
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const theme = useTheme();
   const keyboardHeight = useKeyboardHeight();
 
   const [email, setEmail] = useState('');
@@ -68,16 +72,12 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      // Proses autentikasi via Firebase (FR-01.2 & FR-01.7)
+      // Proses autentikasi via Firebase (FR-01.2, FR-01.7, FR-S4-01.3)
       const userProfile = await login(email, password);
 
-      // Arahkan ke dashboard sesuai peran pengguna (FR-01.8)
-      if (userProfile.role === 'praktikan') {
-        router.replace('/praktikan');
-      } else {
-        router.replace('/asisten');
-      }
-    } catch (error: any) {
+      // Arahkan ke dashboard sesuai 3 peran pengguna (FR-S4-01.4)
+      router.replace(getHomeRouteForRole(userProfile.role) as Href);
+    } catch (error: unknown) {
       // Tampilkan pesan error yang deskriptif (FR-01.10)
       const message = getAuthErrorMessage(error);
       setErrorMessage(message);
@@ -105,14 +105,25 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}>
           {/* Header Brand */}
           <View style={styles.brandHeader}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoEmoji}>🔬</Text>
+            <View
+              style={[
+                styles.logoBadge,
+                {
+                  backgroundColor: theme.primaryBg,
+                  borderColor: theme.primaryBorder,
+                },
+              ]}>
+              <Ionicons
+                name="flask-outline"
+                size={30}
+                color={theme.primaryText}
+              />
             </View>
             <ThemedText type="subtitle" style={styles.title}>
               Praktikum PPK
             </ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-              Masuk ke akun Anda untuk mengakses jadwal, presensi, dan pengelolaan sesi
+              Masuk ke akun Anda untuk mengakses jadwal, presensi, pengelolaan lab, dan sesi
             </ThemedText>
           </View>
 
@@ -123,9 +134,22 @@ export default function LoginScreen() {
             </ThemedText>
 
             {errorMessage && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorIcon}>⚠️</Text>
-                <Text style={styles.errorText}>{errorMessage}</Text>
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: theme.dangerBg,
+                    borderColor: theme.dangerBorder,
+                  },
+                ]}>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={18}
+                  color={theme.dangerText}
+                />
+                <Text style={[styles.errorText, { color: theme.dangerText }]}>
+                  {errorMessage}
+                </Text>
               </View>
             )}
 
@@ -158,13 +182,20 @@ export default function LoginScreen() {
 
             <View style={styles.buttonWrapper}>
               {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="#2563EB" />
-                  <Text style={styles.loadingText}>Memverifikasi akun...</Text>
+                <View
+                  style={[
+                    styles.loadingContainer,
+                    { backgroundColor: theme.primaryBg },
+                  ]}>
+                  <ActivityIndicator size="small" color={theme.primary} />
+                  <Text
+                    style={[styles.loadingText, { color: theme.primaryText }]}>
+                    Memverifikasi akun...
+                  </Text>
                 </View>
               ) : (
                 <PrimaryButton
-                  label="Masuk Sekarang →"
+                  label="Masuk Sekarang"
                   onPress={handleLogin}
                 />
               )}
@@ -178,16 +209,30 @@ export default function LoginScreen() {
               <Pressable
                 onPress={() => router.push('/(auth)/register')}
                 hitSlop={8}>
-                <Text style={styles.registerLink}>Daftar Akun Baru</Text>
+                <Text style={[styles.registerLink, { color: theme.primaryText }]}>
+                  Daftar Akun Baru
+                </Text>
               </Pressable>
             </View>
           </Card>
 
-          {/* Quick Demo Hint */}
-          <View style={styles.hintSection}>
-            <Text style={styles.hintBadge}>💡 Tips Pengujian</Text>
-            <Text style={styles.hintText}>
-              Gunakan email dan kata sandi yang telah Anda daftarkan. Pengguna akan diarahkan otomatis ke halaman Praktikan atau Asisten sesuai perannya.
+          {/* Info Peran */}
+          <View
+            style={[
+              styles.hintSection,
+              {
+                backgroundColor: theme.backgroundElement,
+                borderColor: theme.borderSubtle,
+              },
+            ]}>
+            <View style={styles.hintHeader}>
+              <Ionicons name="bulb-outline" size={15} color={theme.info} />
+              <Text style={[styles.hintBadge, { color: theme.text }]}>
+                Tips Pengujian
+              </Text>
+            </View>
+            <Text style={[styles.hintText, { color: theme.textSecondary }]}>
+              Gunakan email dan kata sandi yang telah Anda daftarkan. Pengguna diarahkan otomatis ke halaman Aslab, Asprak, atau Praktikan sesuai perannya.
             </Text>
           </View>
         </ScrollView>
@@ -220,15 +265,10 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#BFDBFE',
     marginBottom: 8,
-  },
-  logoEmoji: {
-    fontSize: 32,
   },
   title: {
     fontSize: 26,
@@ -243,7 +283,7 @@ const styles = StyleSheet.create({
   },
   formCard: {
     padding: 20,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
   },
   formTitle: {
     fontSize: 18,
@@ -252,22 +292,15 @@ const styles = StyleSheet.create({
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
     padding: 12,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     marginBottom: 16,
     gap: 8,
   },
-  errorIcon: {
-    fontSize: 16,
-  },
   errorText: {
     flex: 1,
-    color: '#B91C1C',
-    fontSize: 13,
-    lineHeight: 18,
+    ...Typography.bodySmall,
     fontWeight: '500',
   },
   buttonWrapper: {
@@ -278,13 +311,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     gap: 10,
   },
   loadingText: {
     fontSize: 15,
-    color: '#2563EB',
     fontWeight: '600',
   },
   registerPrompt: {
@@ -299,25 +330,25 @@ const styles = StyleSheet.create({
   registerLink: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2563EB',
   },
   hintSection: {
     marginTop: Spacing.four,
     padding: 14,
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    gap: 4,
+  },
+  hintHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   hintBadge: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '700',
-    color: '#475569',
-    marginBottom: 4,
   },
   hintText: {
-    fontSize: 12,
-    color: '#64748B',
+    ...Typography.caption,
     lineHeight: 18,
   },
 });

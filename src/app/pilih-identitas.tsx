@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Href, Redirect, router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -18,6 +18,7 @@ import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/data/store';
 import { Asisten, Praktikan, Role, UserIdentitas } from '@/data/types';
+import { getHomeRouteForRole } from '../lib/role-routing';
 
 export default function PilihIdentitasScreen() {
   const params = useLocalSearchParams<{ role?: string }>();
@@ -73,11 +74,7 @@ export default function PilihIdentitasScreen() {
     setRole(activeRole);
     setIdentitas(selectedUser);
 
-    if (isPraktikan) {
-      router.replace('/praktikan');
-    } else {
-      router.replace('/asisten');
-    }
+    router.replace(getHomeRouteForRole(activeRole) as Href);
   };
 
   return (

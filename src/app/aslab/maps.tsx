@@ -1,11 +1,10 @@
-
 import React from 'react';
 
 import { ScreenShell } from '@/components/screen-shell';
 import LabMapsContent from '@/components/maps/LabMapsContent';
 import { useSesiAsisten } from '@/hooks/use-praktikum';
 
-export default function AsistenMapsScreen() {
+export default function AslabMapsScreen() {
   return (
     <ScreenShell>
       {() => <Isi />}
