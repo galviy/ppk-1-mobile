@@ -68,7 +68,8 @@
         {
           "androidGoogleMapsApiKey": "AIzaSyBTeQIO2aNLz6YsAnFAQljJUcxdu96Z0BA"
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,
